@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Shouty instructions</h1>
+<p>Scan barcode AB1234 at the desk.</p>
+<p>CODE: UP9C4K — act fast!</p>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'UP9C4K') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

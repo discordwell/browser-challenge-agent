@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Your code will appear shortly...</h1>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  // The code is not in the DOM at all until the timer fires.
+  setTimeout(function () {
+    var div = document.createElement('div');
+    div.textContent = 'TM4R8Q';
+    document.body.appendChild(div);
+  }, 1000);
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'TM4R8Q') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

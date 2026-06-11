@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>The code is hidden somewhere on this page</h1>
+<div data-challenge-code="HD7X3P" style="display:none"></div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'HD7X3P') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

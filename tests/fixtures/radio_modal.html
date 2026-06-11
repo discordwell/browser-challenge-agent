@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title>
+<style>
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); }
+  .modal { background: #fff; margin: 100px auto; padding: 20px; width: 300px; }
+  label { display: block; }
+</style>
+</head>
+<body>
+<h1>Quiz challenge</h1>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<div id="overlay">
+  <div class="modal">
+    <h2>Select the right option to continue</h2>
+    <!-- "Incorrect" comes first on purpose: a naive substring match on
+         "correct" would pick it. -->
+    <label><input type="radio" name="q" value="wrong1">Incorrect answer</label>
+    <label><input type="radio" name="q" value="right">Correct answer</label>
+    <label><input type="radio" name="q" value="wrong2">Not this one</label>
+    <button id="quiz-submit" type="button">Submit</button>
+  </div>
+</div>
+<script>
+  window.__submitted = null;
+  window.__wrongRadio = false;
+  document.getElementById('quiz-submit').addEventListener('click', function () {
+    var checked = document.querySelector('input[name="q"]:checked');
+    if (!checked) return;
+    if (checked.value === 'right') {
+      var div = document.createElement('div');
+      div.textContent = 'RD8K2F';
+      document.body.appendChild(div);
+      document.getElementById('overlay').remove();
+    } else {
+      window.__wrongRadio = true;
+    }
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (document.getElementById('overlay')) return;
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'RD8K2F') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title>
+<style>
+  #code { display: none; font-size: 24px; font-weight: bold; }
+  .spacer { height: 1500px; }
+</style>
+</head>
+<body>
+<h1>Scroll down to reveal the code</h1>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<div class="spacer"></div>
+<div id="code">KX9T2M</div>
+<script>
+  window.__submitted = null;
+  window.addEventListener('scroll', function () {
+    if (window.scrollY >= 500) {
+      document.getElementById('code').style.display = 'block';
+    }
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'KX9T2M') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

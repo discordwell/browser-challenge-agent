@@ -1,130 +1,244 @@
 /**
- * FAST BROWSER CHALLENGE SOLVER
+ * FAST BROWSER CHALLENGE SOLVER — shared solver core.
  *
  * Handles all known challenge patterns:
  * 1. Scroll-reveal (500px+)
  * 2. Click-to-reveal ("Reveal Code" button)
- * 3. Timer-delayed (poll for code appearance)
+ * 3. Timer-delayed (poll until the code appears)
  * 4. Hidden DOM attribute (data-challenge-code)
- * 5. Radio selection modals (find "Correct" option)
- * 6. Various popup modals (Dismiss/Decline/Close)
+ * 5. Radio selection modals (pick the "Correct" option, not "Incorrect")
+ * 6. Popup modals (Dismiss/Decline/Close/icon-only ×)
+ * 7. Codes shown inline ("Code: ABC123" / "code is ABC123") or as a
+ *    standalone 6-character line
  *
- * Strategy: Do everything in parallel, poll rapidly until step changes
+ * Two ways to run it:
+ *   - Console: start the challenge, then paste this whole file into the
+ *     browser console. It auto-runs solveAllSteps() and logs RESULTS.
+ *   - Embedded: agent.py declares `var __SOLVER_EMBEDDED__ = true` and
+ *     includes this source inside the same function scope, then drives
+ *     solveStepLoop() one step at a time so it can track metrics. The gate
+ *     is a scoped variable (checked via typeof), never a page global, so
+ *     embedding leaves no trace and a later console paste still auto-runs.
+ *
+ * Only `function` declarations at the top level (no const/let) so the file
+ * can be pasted into the same console twice without redeclaration errors.
  */
 
-async function solveAllSteps() {
-    const wait = ms => new Promise(r => setTimeout(r, ms));
-    const startTime = Date.now();
-    const results = [];
+function getCurrentStep() {
+    var m = location.pathname.match(/step(\d+)/);
+    return m ? parseInt(m[1], 10) : 0;
+}
+
+function solverWait(ms) {
+    return new Promise(function (r) { setTimeout(r, ms); });
+}
+
+function looksFinished() {
+    // Deliberately specific: lobby copy like "Complete 30 challenges in under
+    // 5 minutes" must NOT match, so plain /complete/ is out.
+    return /congrat|well done|you did it|challenge complete|all (\d+ )?(challenges?|steps?) (complete|done|solved)/i
+        .test(document.body.innerText || '');
+}
+
+/**
+ * One DOM pass: dismiss modals, trigger reveals, pick radios, hunt for the
+ * code, then type + submit it. `state` persists across passes within a step
+ * so the same code isn't re-submitted every few milliseconds.
+ */
+async function solveOnePass(state) {
+    state.actions = state.actions || [];
+    var act = function (a) { if (state.actions.length < 200) state.actions.push(a); };
+
+    // Scroll-reveal challenges unlock past ~500px.
+    window.scrollTo(0, 600);
+
+    // Close modals/popups. Exact text matches only, so "Close Account"-style
+    // distractors don't trigger; empty text catches icon-only × buttons.
+    document.querySelectorAll('button').forEach(function (btn) {
+        var t = (btn.textContent || '').toLowerCase().trim();
+        if (t === 'dismiss' || t === 'decline' || t === 'close' || t === '' || t === '×') {
+            try { btn.click(); act('close:' + (t || 'icon')); } catch (e) {}
+        }
+    });
+
+    // Click-to-reveal challenges.
+    var revealBtn = Array.prototype.find.call(
+        document.querySelectorAll('button'),
+        function (b) { return (b.textContent || '').toLowerCase().indexOf('reveal') !== -1; }
+    );
+    if (revealBtn) {
+        try { revealBtn.click(); act('reveal'); } catch (e) {}
+    }
+
+    // Radio modals: pick the option labelled "correct" — "incorrect" has a
+    // letter before the match, so it is rejected.
+    var isCorrectLabel = function (text) { return /(?:^|[^a-z])correct/i.test(text || ''); };
+    var radioClicked = false;
+    document.querySelectorAll('[role="radio"], input[type="radio"]').forEach(function (r) {
+        if (radioClicked) return;
+        var text = r.textContent ||
+            (r.labels && r.labels[0] && r.labels[0].textContent) ||
+            r.getAttribute('aria-label') || '';
+        if (isCorrectLabel(text)) {
+            try { r.click(); radioClicked = true; act('radio:' + text.trim().slice(0, 30)); } catch (e) {}
+        }
+    });
+    if (radioClicked) {
+        await solverWait(20);
+        document.querySelectorAll('button').forEach(function (btn) {
+            var t = (btn.textContent || '').trim();
+            // The modal's confirm button — never the main "Submit Code" button.
+            if (t === 'Submit' || t.indexOf('Submit &') === 0) {
+                try { btn.click(); act('modal-submit'); } catch (e) {}
+            }
+        });
+        await solverWait(20);
+    }
+
+    // Hunt for the 6-character code.
+    var code = null;
+    var codeEl = document.querySelector('[data-challenge-code]');
+    if (codeEl) {
+        code = codeEl.getAttribute('data-challenge-code');
+        if (code) act('code-source:data-attr');
+    }
+    if (!code) {
+        var text = document.body.innerText || '';
+        var lines = text.split('\n');
+        for (var i = 0; i < lines.length; i++) {
+            if (/^[A-Z0-9]{6}$/.test(lines[i].trim())) {
+                code = lines[i].trim();
+                act('code-source:standalone-line');
+                break;
+            }
+        }
+        if (!code) {
+            // "Code: ABC123" / "CODE: ABC123" / "code is ABC123". The \b
+            // keeps "barcode"/"decode" from matching, and the value class is
+            // uppercase-only so prose after the word "code" can't match.
+            var m = text.match(/\b(?:CODE|[Cc]ode)\s*(?:is|:)?\s*([A-Z0-9]{6})(?![A-Z0-9])/);
+            if (m) {
+                code = m[1];
+                act('code-source:labelled');
+            }
+        }
+    }
+
+    // Type + submit. Don't hammer: if this code were right the step would
+    // have advanced already, so only re-submit the same code occasionally in
+    // case an event was dropped mid-render. (Time-based, so the interval
+    // doesn't drift with the caller's poll rate.)
+    if (code) {
+        state.code = code;
+        var recentlySubmitted = state.lastSubmitted === code &&
+            (Date.now() - state.lastSubmitTime) < 800;
+        if (!recentlySubmitted) {
+            var input = document.querySelector('input[placeholder*="code" i]') ||
+                document.querySelector('input[type="text"]');
+            var submit = document.querySelector('button[type="submit"]') ||
+                Array.prototype.find.call(
+                    document.querySelectorAll('button'),
+                    function (b) { return /^submit/i.test((b.textContent || '').trim()); }
+                );
+            if (input && submit) {
+                // Native setter so React's value tracking sees the change.
+                var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+                setter.call(input, code);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                try { submit.click(); act('submit:' + code); } catch (e) {}
+                state.lastSubmitted = code;
+                state.lastSubmitTime = Date.now();
+            }
+        }
+    }
+    return state;
+}
+
+/**
+ * Solve the current step: poll solveOnePass until the URL's step number
+ * advances, the completion page appears, or `maxMs` elapses.
+ *
+ * Returns {advanced, finished, step, newStep, code, attempts, ms, actions}
+ * plus `timeout: true` or `reset: true` when those apply.
+ */
+async function solveStepLoop(opts) {
+    opts = opts || {};
+    var pollMs = opts.pollMs || 40;
+    var maxMs = opts.maxMs || 15000;
+    var maxSteps = opts.maxSteps || 30;
+    var start = Date.now();
+    var startStep = getCurrentStep();
+    var state = { pass: 0, code: null, lastSubmitted: null, lastSubmitTime: 0 };
+
+    var result = function (extra) {
+        return Object.assign({
+            advanced: false,
+            finished: false,
+            step: startStep,
+            newStep: getCurrentStep(),
+            code: state.code,
+            attempts: state.pass,
+            ms: Date.now() - start,
+            actions: Array.from(new Set(state.actions || []))
+        }, extra);
+    };
+
+    if (startStep === 0) {
+        return result({ actions: ['no-step-in-url'] });
+    }
 
     while (true) {
-        const stepMatch = location.pathname.match(/step(\d+)/);
-        const currentStep = stepMatch ? parseInt(stepMatch[1]) : 0;
+        state.pass++;
+        await solveOnePass(state);
+        await solverWait(pollMs);
 
-        if (currentStep === 0 || currentStep > 30) break;
-
-        const stepStart = Date.now();
-        let solved = false;
-        let attempts = 0;
-
-        while (!solved && attempts < 100) {
-            attempts++;
-
-            // 1. SCROLL - always scroll to trigger scroll-reveal
-            window.scrollTo(0, 600);
-
-            // 2. CLOSE MODALS - aggressively close all popups
-            document.querySelectorAll('button').forEach(btn => {
-                const t = (btn.textContent || '').toLowerCase().trim();
-                if (['dismiss', 'decline', 'close'].includes(t) || t === '' || t === '×') {
-                    try { btn.click(); } catch(e) {}
-                }
-            });
-
-            // 3. CLICK REVEAL - if there's a reveal button, click it
-            const revealBtn = Array.from(document.querySelectorAll('button'))
-                .find(b => b.textContent.toLowerCase().includes('reveal'));
-            if (revealBtn) revealBtn.click();
-
-            // 4. HANDLE RADIO SELECTION
-            let radioClicked = false;
-            document.querySelectorAll('[role="radio"], input[type="radio"]').forEach(r => {
-                if (radioClicked) return;
-                const text = (r.textContent || r.labels?.[0]?.textContent || '').toLowerCase();
-                if (text.includes('correct')) {
-                    r.click();
-                    radioClicked = true;
-                }
-            });
-
-            // Click modal submit if radio was clicked
-            if (radioClicked) {
-                await wait(20);
-                document.querySelectorAll('button').forEach(btn => {
-                    const t = btn.textContent.trim();
-                    if (t === 'Submit' || t.includes('Submit &')) {
-                        try { btn.click(); } catch(e) {}
-                    }
-                });
-                await wait(20);
-            }
-
-            // 5. FIND CODE - check all sources
-            let code = null;
-
-            // Source A: data attribute
-            const codeEl = document.querySelector('[data-challenge-code]');
-            if (codeEl) code = codeEl.getAttribute('data-challenge-code');
-
-            // Source B: standalone 6-char code in text
-            if (!code) {
-                const text = document.body.innerText;
-                const lines = text.split('\n').map(l => l.trim());
-                const codeLine = lines.find(l => /^[A-Z0-9]{6}$/.test(l));
-                if (codeLine) code = codeLine;
-            }
-
-            // 6. SUBMIT CODE
-            if (code) {
-                const input = document.querySelector('input[placeholder*="code"]');
-                const submit = document.querySelector('button[type="submit"]');
-                if (input && submit) {
-                    // Use native setter for React compatibility
-                    const setter = Object.getOwnPropertyDescriptor(
-                        HTMLInputElement.prototype, 'value'
-                    ).set;
-                    setter.call(input, code);
-                    input.dispatchEvent(new Event('input', {bubbles: true}));
-                    submit.click();
-                }
-            }
-
-            // Check if step changed
-            await wait(30);
-            const newStep = location.pathname.match(/step(\d+)/)?.[1];
-            if (newStep && parseInt(newStep) > currentStep) {
-                solved = true;
-                results.push({
-                    step: currentStep,
-                    code,
-                    time: Date.now() - stepStart,
-                    attempts
-                });
-            }
+        var now = getCurrentStep();
+        if (now > startStep) {
+            return result({ advanced: true, finished: now > maxSteps });
         }
-
-        if (!solved) {
-            results.push({step: currentStep, error: 'Max attempts', attempts});
-            break;
+        if (now === 0) {
+            // The step token vanished from the URL: either we reached the
+            // completion page or the site reset us. Page text tells us which.
+            var fin = startStep >= maxSteps || looksFinished();
+            return result({ advanced: fin, finished: fin, reset: !fin });
         }
+        if (now < startStep) {
+            return result({ reset: true });
+        }
+        if (Date.now() - start > maxMs) {
+            return result({ timeout: true });
+        }
+    }
+}
+
+/** Console entry point: solve every step from wherever we currently are. */
+async function solveAllSteps(opts) {
+    opts = opts || {};
+    var startTime = Date.now();
+    var results = [];
+
+    while (true) {
+        var step = getCurrentStep();
+        if (step === 0 || step > (opts.maxSteps || 30)) break;
+        var r = await solveStepLoop(opts);
+        results.push(r);
+        if (!r.advanced || r.finished) break;
     }
 
     return {
         totalTime: Date.now() - startTime,
-        stepsCompleted: results.length,
-        results
+        stepsCompleted: results.filter(function (r) { return r.advanced; }).length,
+        finished: results.length > 0 && results[results.length - 1].finished,
+        results: results
     };
 }
 
-// Run the solver
-solveAllSteps().then(r => console.log('RESULTS:', JSON.stringify(r, null, 2)));
+// Auto-run only when pasted into a console. agent.py declares
+// `var __SOLVER_EMBEDDED__ = true` in the scope it embeds this source into;
+// the typeof check makes the bare identifier safe when it was never declared.
+if (typeof __SOLVER_EMBEDDED__ === 'undefined' || !__SOLVER_EMBEDDED__) {
+    solveAllSteps().then(function (r) {
+        console.log('RESULTS:', JSON.stringify(r, null, 2));
+    });
+}

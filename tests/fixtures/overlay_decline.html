@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title>
+<style>
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); }
+  .modal { background: #fff; margin: 100px auto; padding: 20px; width: 300px; }
+</style>
+</head>
+<body>
+<h1>Find the code below</h1>
+<div>PR1V8C</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<div id="overlay">
+  <div class="modal">
+    <h2>We value your privacy</h2>
+    <p>Accept cookies to continue.</p>
+    <button id="accept" type="button">Accept All</button>
+    <button id="decline" type="button">Decline</button>
+  </div>
+</div>
+<script>
+  window.__submitted = null;
+  window.__accepted = false;
+  window.__blockedSubmit = false;
+  document.getElementById('accept').addEventListener('click', function () {
+    window.__accepted = true;
+  });
+  document.getElementById('decline').addEventListener('click', function () {
+    var o = document.getElementById('overlay');
+    if (o) o.remove();
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (document.getElementById('overlay')) {
+      window.__blockedSubmit = true;
+      return; // modal "blocks" the page, like the real site
+    }
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'PR1V8C') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

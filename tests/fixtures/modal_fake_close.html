@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title>
+<style>
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); }
+  .modal { background: #fff; margin: 100px auto; padding: 20px; width: 300px; }
+</style>
+</head>
+<body>
+<h1>Warning challenge</h1>
+<div>WRN3X7</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<div id="overlay">
+  <div class="modal">
+    <h2>Warning!</h2>
+    <p>This Close button is a decoy. Only Dismiss works.</p>
+    <button id="fake-close" type="button">Close</button>
+    <button id="dismiss" type="button">Dismiss</button>
+  </div>
+</div>
+<script>
+  window.__submitted = null;
+  window.__fakeCloseClicks = 0;
+  document.getElementById('fake-close').addEventListener('click', function () {
+    window.__fakeCloseClicks++; // does NOT close the modal
+  });
+  document.getElementById('dismiss').addEventListener('click', function () {
+    var o = document.getElementById('overlay');
+    if (o) o.remove();
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (document.getElementById('overlay')) return;
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'WRN3X7') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

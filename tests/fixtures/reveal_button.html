@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Click the button to get your code</h1>
+<button id="reveal" type="button">Reveal Code</button>
+<div id="code" style="display:none">RV5L9Q</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('reveal').addEventListener('click', function () {
+    document.getElementById('code').style.display = 'block';
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'RV5L9Q') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

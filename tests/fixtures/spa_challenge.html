@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>SPA Challenge</title></head>
+<body>
+<div id="app"></div>
+<script>
+  // A two-step miniature of the real challenge site: client-side routing via
+  // pushState, a lobby with a START button, and a completion page.
+  window.__submitted = [];
+  var CODES = { 1: 'AB12CD', 2: 'EF34GH' };
+
+  function render() {
+    var path = location.pathname;
+    var app = document.getElementById('app');
+    if (path === '/' || path === '') {
+      app.innerHTML =
+        '<h1>Welcome</h1>' +
+        '<p>Complete 2 challenges in under 5 minutes.</p>' +
+        '<button id="start" type="button">START CHALLENGE</button>';
+      document.getElementById('start').addEventListener('click', function () {
+        nav('/step1');
+      });
+      return;
+    }
+    if (path === '/complete') {
+      app.innerHTML = '<h1>Congratulations! Challenge complete!</h1>';
+      return;
+    }
+    var m = path.match(/step(\d+)/);
+    var n = m ? parseInt(m[1], 10) : 1;
+    app.innerHTML =
+      '<h1>Puzzle number ' + n + '</h1>' +
+      (n === 1
+        ? '<div data-challenge-code="AB12CD"></div>'
+        : '<div>EF34GH</div>') +
+      '<form id="form">' +
+      '<input type="text" placeholder="Enter code">' +
+      '<button type="submit">Submit Code</button>' +
+      '</form>';
+    document.getElementById('form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var v = e.target.querySelector('input').value;
+      window.__submitted.push(v);
+      if (v === CODES[n]) {
+        nav(n === 2 ? '/complete' : '/step' + (n + 1));
+      }
+    });
+  }
+
+  function nav(p) {
+    history.pushState({}, '', p);
+    render();
+  }
+
+  window.addEventListener('popstate', render);
+  render();
+</script>
+</body>
+</html>
