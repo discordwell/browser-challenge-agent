@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title>
+<style>
+  #overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); }
+  .modal { background: #fff; margin: 100px auto; padding: 20px; width: 300px; }
+</style>
+</head>
+<body>
+<h1>Dropdown quiz challenge</h1>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<div id="overlay">
+  <div class="modal">
+    <h2>Pick the right option to continue</h2>
+    <!-- "Incorrect" is listed before "Correct"; a substring match on
+         "correct" would pick it. -->
+    <select id="quiz">
+      <option value="">-- choose --</option>
+      <option value="wrong1">Incorrect option</option>
+      <option value="right">Correct option</option>
+      <option value="wrong2">Another wrong one</option>
+    </select>
+    <button id="quiz-submit" type="button">Submit</button>
+  </div>
+</div>
+<script>
+  window.__submitted = null;
+  window.__wrongSelect = false;
+  document.getElementById('quiz-submit').addEventListener('click', function () {
+    var v = document.getElementById('quiz').value;
+    if (!v) return;
+    if (v === 'right') {
+      var div = document.createElement('div');
+      div.textContent = 'SL7K2D';
+      document.body.appendChild(div);
+      document.getElementById('overlay').remove();
+    } else {
+      window.__wrongSelect = true;
+    }
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (document.getElementById('overlay')) return;  // quiz gates the form
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'SL7K2D') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

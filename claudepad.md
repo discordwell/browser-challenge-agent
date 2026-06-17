@@ -2,6 +2,35 @@
 
 ## Session Summaries
 
+### 2026-06-17T12:00Z — Select-dropdown quizzes + decoy-safe checkbox gates
+- New pattern: `<select>` dropdown quizzes. `solveOnePass` now picks the option
+  whose text reads "correct" (reusing the radio's `isCorrectLabel`, so
+  "Incorrect" is still rejected) and drives it via the native
+  `HTMLSelectElement` value setter + `change` event (React-aware, same as the
+  code input). Radio + select share one `quizAnswered` flag and the existing
+  modal-confirm pass (`Submit`/`Submit & …`, never `Submit Code`).
+- Hardened the submit-gate handler against decoy checkboxes (the project's
+  distractor theme). Was: check ALL unticked boxes whenever submit is disabled —
+  which also ticks a "sign me up" decoy. Now: tick ONE box per pass, the most
+  gate-like one (label matches `agree|consent|terms|condition|human|robot|
+  confirm|continue|proceed`), then let the next ~40ms poll see if submit
+  unlocked. Strictly ⊆ the old set of boxes touched, and on React it avoids the
+  decoy entirely (the gate box's re-render lands before the next box is tried).
+- 2 fixtures + tests (`select_quiz`, `agree_gate_distractor`); confirmed both
+  FAIL against the pre-change solver (select → never advances; distractor box →
+  gets ticked) and pass after. Suite: 35 passing (was 33). `node --check` clean.
+- Code review (2 parallel finders, correctness + cleanup): no correctness bugs.
+  Acted on the one shared finding — the native value-setter dance was duplicated
+  across the code input and the new select. Extracted `setNativeValue(el, value)`
+  (reads the setter off `Object.getPrototypeOf(el)`, so it's right for both
+  element types) as a top-level `function` (re-paste-safe). The input path is
+  covered by nearly every fixture, so the suite is a strong regression net.
+- Considered a `pyproject.toml` to silence the `pytest-asyncio` "unset config
+  option" deprecation, but that warning fires at plugin-import time (before
+  `filterwarnings`/`-W` apply) and the plugin isn't even a declared dep
+  (requirements-dev pins only pytest). Dropped it rather than ship a config that
+  can't do what its comment claims.
+
 ### 2026-06-17T08:10Z — Code-detection hardening + submit-gate handling
 - Hardened `fast_solver.js` code detection against distractors (the project's
   stated theme). Now gathers a candidate from each source (data-attr, labelled

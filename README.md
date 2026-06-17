@@ -13,8 +13,8 @@ The solver is deterministic DOM logic — no LLM calls, no screenshots, zero tok
 - Inline labelled codes ("Code: ABC123" / "code is ABC123")
 - Standalone codes — prefers a digit-bearing line, so 6-letter distractor words ("PUZZLE", "REVEAL") aren't mistaken for a code
 - Popup modals — Dismiss / Decline / Close / icon-only ×, including fake-close decoys
-- Radio quiz modals — picks "Correct", not "**In**correct" (substring traps)
-- "I agree" / "I'm human" gates — checks the box only when it's keeping the submit button disabled
+- Quiz modals — radio buttons or a `<select>` dropdown; picks "Correct", not "**In**correct" (substring traps)
+- "I agree" / "I'm human" gates — checks the gate-like box only while it's keeping the submit button disabled, one box per poll, so a decoy "sign me up" checkbox is left unchecked
 - Distractor avoidance — exact-text matching so "Accept All" / "Close Account" style buttons are never clicked
 
 ## Setup

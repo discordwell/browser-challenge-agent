@@ -12,8 +12,10 @@ Challenge types handled (see fast_solver.js for the in-page logic):
 4. Direct / labelled code display ("Code: ABC123"); standalone codes prefer
    a digit-bearing line over 6-letter distractor words
 5. Modal dismissal (Dismiss / Decline / Close / icon-only ×)
-6. Radio selection modals (pick "Correct", not "Incorrect")
-7. "I agree" / "I'm human" gates (check the box to enable a disabled submit)
+6. Quiz modals — radio buttons or a <select> dropdown (pick "Correct", not
+   "Incorrect")
+7. "I agree" / "I'm human" gates (check the gate-like box to enable a disabled
+   submit, leaving decoy checkboxes alone)
 """
 
 import argparse

@@ -20,8 +20,8 @@
 ┌────────────────────────────────────────────────────────────┐
 │ fast_solver.js — in-page solver core (vanilla JS)          │
 │   solveOnePass(state)   scroll, close modals, reveal,      │
-│                         submit gates, radio quizzes,       │
-│                         find code, submit                  │
+│                         submit gates, quiz modals          │
+│                         (radio / select), find code, submit│
 │   findSubmitButton()    the page's main submit control     │
 │   solveStepLoop(opts)   poll one step until URL advances,  │
 │                         completion, reset, or timeout      │
@@ -59,9 +59,11 @@
   completed step before accepting a text match.
 
 - **Safety against distractors.** Modal buttons are matched on exact text
-  (`dismiss`/`decline`/`close`/empty/`×`), radio labels must contain the word
-  "correct" not preceded by a letter (rejects "Incorrect"), and the
-  modal-confirm pass clicks `Submit`/`Submit & …` but never `Submit Code`.
+  (`dismiss`/`decline`/`close`/empty/`×`); quiz answers (radio buttons or a
+  `<select>` dropdown) must contain the word "correct" not preceded by a letter
+  (rejects "Incorrect"); and the modal-confirm pass clicks `Submit`/`Submit & …`
+  but never `Submit Code`. A `<select>` is driven through the native value
+  setter + `change` event, the same React-aware path the code input uses.
 
 - **Code detection — gather candidates, prefer digits.** A candidate is
   collected from each source: the `data-challenge-code` attribute, a *labelled*
@@ -76,9 +78,14 @@
   while an all-letter code is still found when nothing better exists.
 
 - **Submit gates.** Some steps disable the submit button until an "I agree" /
-  "I'm human" checkbox is ticked. The solver checks unticked checkboxes only
-  while the submit button is actually `disabled`, so ordinary pages — and
-  unrelated checkboxes like a newsletter opt-in — are left untouched.
+  "I'm human" checkbox is ticked. The solver acts only while the submit button
+  is actually `disabled`, and ticks just **one** box per pass — the most
+  gate-like unchecked one (label matching `agree|consent|terms|human|robot|…`),
+  letting the next poll observe whether submit unlocked. So ordinary pages are
+  untouched, and a decoy box (a newsletter opt-in listed alongside the real
+  gate) is never ticked once the real box has already enabled the button. This
+  also gives a React re-render a tick to land between checking and re-reading
+  `disabled`.
 
 - **Throttled submission.** A found code is typed via the native value setter
   (React compatibility) and submitted once; the same code is only re-submitted

@@ -6,13 +6,15 @@
  * 2. Click-to-reveal ("Reveal Code" button)
  * 3. Timer-delayed (poll until the code appears)
  * 4. Hidden DOM attribute (data-challenge-code)
- * 5. Radio selection modals (pick the "Correct" option, not "Incorrect")
+ * 5. Quiz modals — radio buttons or a <select> dropdown (pick the "Correct"
+ *    option, not "Incorrect")
  * 6. Popup modals (Dismiss/Decline/Close/icon-only ×)
  * 7. Codes shown inline ("Code: ABC123" / "code is ABC123") or as a
  *    standalone 6-character line (digit-bearing lines win over all-letter
  *    distractors; a labelled code wins over a loose standalone token)
- * 8. Submit gated behind an "I agree" / "I'm human" checkbox (checked only
- *    while the submit button is actually disabled)
+ * 8. Submit gated behind an "I agree" / "I'm human" checkbox (only while the
+ *    submit button is disabled, one gate-like box per pass, so decoy boxes
+ *    such as a newsletter opt-in are left alone once submit unlocks)
  *
  * Two ways to run it:
  *   - Console: start the challenge, then paste this whole file into the
@@ -58,6 +60,19 @@ function findSubmitButton() {
 }
 
 /**
+ * Set an <input> or <select> value the way React expects: through the element's
+ * native value setter (read off its own prototype, so it's correct for both
+ * element types), then fire input + change so a controlled component re-renders.
+ * Plain `el.value = x` leaves React's value tracker stale and the change is lost.
+ */
+function setNativeValue(el, value) {
+    var setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), 'value').set;
+    setter.call(el, value);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+/**
  * One DOM pass: dismiss modals, trigger reveals, satisfy submit gates, pick
  * radios, hunt for the code, then type + submit it. `state` persists across
  * passes within a step so the same code isn't re-submitted every few ms.
@@ -89,31 +104,66 @@ async function solveOnePass(state) {
 
     // Submit gates: some steps keep the submit button disabled behind an
     // "I agree" / "I'm human" checkbox. Only act while the button is actually
-    // disabled, so ordinary pages are untouched and stray checkboxes (e.g. a
-    // newsletter opt-in) are never toggled when they aren't blocking us.
+    // disabled, so ordinary pages and unrelated checkboxes (e.g. a newsletter
+    // opt-in) are left alone. Check ONE box per pass — the most gate-like
+    // unchecked one — then let the next poll see whether submit unlocked. That
+    // way a decoy "sign me up" box isn't toggled once the real box has already
+    // enabled the button, and a React re-render has a tick to land.
     var gateBtn = findSubmitButton();
     if (gateBtn && gateBtn.disabled) {
-        document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
-            if (!cb.checked) {
-                try { cb.click(); act('check:gate'); } catch (e) {}
-            }
+        var gateLike = /agree|consent|terms|condition|human|robot|confirm|continue|proceed/;
+        var checkboxText = function (cb) {
+            var label = cb.closest && cb.closest('label');
+            return ((label && label.textContent) ||
+                (cb.labels && cb.labels[0] && cb.labels[0].textContent) ||
+                cb.getAttribute('aria-label') || '').toLowerCase();
+        };
+        var unchecked = Array.prototype.filter.call(
+            document.querySelectorAll('input[type="checkbox"]'),
+            function (cb) { return !cb.checked; }
+        );
+        // Gate-like labels first; the sort is stable, so DOM order breaks ties.
+        unchecked.sort(function (a, b) {
+            return (gateLike.test(checkboxText(b)) ? 1 : 0) -
+                (gateLike.test(checkboxText(a)) ? 1 : 0);
         });
+        if (unchecked.length) {
+            try { unchecked[0].click(); act('check:gate'); } catch (e) {}
+        }
     }
 
-    // Radio modals: pick the option labelled "correct" — "incorrect" has a
-    // letter before the match, so it is rejected.
+    // Quiz modals: choose the option labelled "correct" — "incorrect" has a
+    // letter before the match, so it is rejected. Both radio buttons and a
+    // <select> dropdown are handled; whichever fires triggers the confirm pass.
     var isCorrectLabel = function (text) { return /(?:^|[^a-z])correct/i.test(text || ''); };
-    var radioClicked = false;
+    var quizAnswered = false;
     document.querySelectorAll('[role="radio"], input[type="radio"]').forEach(function (r) {
-        if (radioClicked) return;
+        if (quizAnswered) return;
         var text = r.textContent ||
             (r.labels && r.labels[0] && r.labels[0].textContent) ||
             r.getAttribute('aria-label') || '';
         if (isCorrectLabel(text)) {
-            try { r.click(); radioClicked = true; act('radio:' + text.trim().slice(0, 30)); } catch (e) {}
+            try { r.click(); quizAnswered = true; act('radio:' + text.trim().slice(0, 30)); } catch (e) {}
         }
     });
-    if (radioClicked) {
+    // Dropdown quizzes: select the "correct" option. Use the native value
+    // setter + change event so React-controlled selects register it, the same
+    // way the code input is driven below.
+    document.querySelectorAll('select').forEach(function (sel) {
+        if (quizAnswered) return;
+        var match = Array.prototype.find.call(sel.options || [], function (o) {
+            return isCorrectLabel(o.textContent);
+        });
+        if (!match) return;
+        if (sel.value !== match.value) {
+            try {
+                setNativeValue(sel, match.value);
+                act('select:' + (match.textContent || '').trim().slice(0, 30));
+            } catch (e) {}
+        }
+        quizAnswered = true;  // confirm even if the right option was already set
+    });
+    if (quizAnswered) {
         await solverWait(20);
         document.querySelectorAll('button').forEach(function (btn) {
             var t = (btn.textContent || '').trim();
@@ -178,11 +228,7 @@ async function solveOnePass(state) {
                 document.querySelector('input[type="text"]');
             var submit = findSubmitButton();
             if (input && submit) {
-                // Native setter so React's value tracking sees the change.
-                var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-                setter.call(input, code);
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                input.dispatchEvent(new Event('change', { bubbles: true }));
+                setNativeValue(input, code);  // React-aware; see helper above
                 try { submit.click(); act('submit:' + code); } catch (e) {}
                 state.lastSubmitted = code;
                 state.lastSubmitTime = Date.now();

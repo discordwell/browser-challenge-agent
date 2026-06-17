@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Confirm to continue</h1>
+<div>DT8R3K</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <!-- Decoy box listed FIRST: checking it does nothing useful and must be
+       avoided once the real "I am human" box has unlocked submit. -->
+  <label><input type="checkbox" id="spam"> Sign me up for the newsletter</label>
+  <label><input type="checkbox" id="agree"> I confirm I am human</label>
+  <button id="submit" type="submit" disabled>Submit Code</button>
+</form>
+<script>
+  // Only the "I am human" box unlocks the submit button; the newsletter box
+  // is an inert distractor.
+  window.__submitted = null;
+  var agree = document.getElementById('agree');
+  var btn = document.getElementById('submit');
+  agree.addEventListener('change', function () { btn.disabled = !agree.checked; });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (btn.disabled) return;
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'DT8R3K') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

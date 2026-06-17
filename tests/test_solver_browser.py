@@ -130,6 +130,28 @@ def test_agree_gate_checkbox_enables_submit(challenge_page):
     assert page.evaluate("window.__submitted") == "GT5R9K"
 
 
+def test_agree_gate_skips_distractor_checkbox(challenge_page):
+    page = challenge_page("agree_gate_distractor.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "DT8R3K"
+    # The gate-like "I am human" box must be checked; the newsletter decoy
+    # (listed first in the DOM) must be left alone once submit is unlocked.
+    assert page.evaluate("document.getElementById('agree').checked") is True
+    assert page.evaluate("document.getElementById('spam').checked") is False
+    assert page.evaluate("window.__submitted") == "DT8R3K"
+
+
+def test_select_dropdown_quiz_picks_correct_option(challenge_page):
+    page = challenge_page("select_quiz.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "SL7K2D"
+    # "Incorrect option" is listed first; a substring match would pick it.
+    assert page.evaluate("window.__wrongSelect") is False
+    assert page.evaluate("window.__submitted") == "SL7K2D"
+
+
 def test_no_step_in_url_returns_without_solving(challenge_page):
     page = challenge_page("data_attr.html", path="/lobby")
     result = run_solver(page)
