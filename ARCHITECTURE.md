@@ -20,7 +20,9 @@
 ┌────────────────────────────────────────────────────────────┐
 │ fast_solver.js — in-page solver core (vanilla JS)          │
 │   solveOnePass(state)   scroll, close modals, reveal,      │
-│                         radio quizzes, find code, submit   │
+│                         submit gates, radio quizzes,       │
+│                         find code, submit                  │
+│   findSubmitButton()    the page's main submit control     │
 │   solveStepLoop(opts)   poll one step until URL advances,  │
 │                         completion, reset, or timeout      │
 │   solveAllSteps(opts)   loop all steps (console usage)     │
@@ -60,6 +62,23 @@
   (`dismiss`/`decline`/`close`/empty/`×`), radio labels must contain the word
   "correct" not preceded by a letter (rejects "Incorrect"), and the
   modal-confirm pass clicks `Submit`/`Submit & …` but never `Submit Code`.
+
+- **Code detection — gather candidates, prefer digits.** A candidate is
+  collected from each source: the `data-challenge-code` attribute, a *labelled*
+  code (`Code: ABC123`) whose value must sit on the same line as the keyword
+  (so the "Code" in a "Submit Code" button can't reach a token on the next
+  line), and a *standalone* `^[A-Z0-9]{6}$` line. The pick order is: explicit
+  attribute → digit-bearing labelled code → digit-bearing standalone line → any
+  standalone line → all-letter labelled value (last resort). Because every real
+  code mixes letters and digits, that digit preference is what stops a 6-letter
+  word *after* "code" (`the code is HIDDEN`) **and** a standalone distractor
+  word (`PUZZLE`/`REVEAL`/`SUBMIT`) from beating the real, digit-bearing code —
+  while an all-letter code is still found when nothing better exists.
+
+- **Submit gates.** Some steps disable the submit button until an "I agree" /
+  "I'm human" checkbox is ticked. The solver checks unticked checkboxes only
+  while the submit button is actually `disabled`, so ordinary pages — and
+  unrelated checkboxes like a newsletter opt-in — are left untouched.
 
 - **Throttled submission.** A found code is typed via the native value setter
   (React compatibility) and submitted once; the same code is only re-submitted

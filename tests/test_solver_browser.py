@@ -88,6 +88,48 @@ def test_uppercase_code_label_but_not_barcode(challenge_page):
     assert page.evaluate("window.__submitted") == "UP9C4K"
 
 
+def test_distractor_words_skipped_for_digit_bearing_code(challenge_page):
+    page = challenge_page("distractor_word_code.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    # "FINALE"/"RESULT"/"PUZZLE" are all 6 uppercase letters and come first;
+    # only the digit-bearing line is the real code.
+    assert result["code"] == "ZX8W4Q"
+    assert page.evaluate("window.__submitted") == "ZX8W4Q"
+
+
+def test_labelled_code_beats_standalone_distractor(challenge_page):
+    page = challenge_page("labelled_beats_distractor.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    # The standalone "XJ47PD" decoy appears first and even has digits; the
+    # explicitly labelled "Code: GD3K8M" must win.
+    assert result["code"] == "GD3K8M"
+    assert "code-source:labelled" in result["actions"]
+    assert page.evaluate("window.__submitted") == "GD3K8M"
+
+
+def test_labelled_prose_word_loses_to_digit_bearing_code(challenge_page):
+    page = challenge_page("labelled_prose_distractor.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    # "The code is HIDDEN" must NOT submit the prose word "HIDDEN"; the real
+    # code is the digit-bearing line.
+    assert result["code"] == "ZX8W4Q"
+    assert page.evaluate("window.__submitted") == "ZX8W4Q"
+
+
+def test_agree_gate_checkbox_enables_submit(challenge_page):
+    page = challenge_page("agree_gate.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "GT5R9K"
+    # The solver had to check the "I am human" box to enable the submit button.
+    assert "check:gate" in result["actions"]
+    assert page.evaluate("document.getElementById('agree').checked") is True
+    assert page.evaluate("window.__submitted") == "GT5R9K"
+
+
 def test_no_step_in_url_returns_without_solving(challenge_page):
     page = challenge_page("data_attr.html", path="/lobby")
     result = run_solver(page)

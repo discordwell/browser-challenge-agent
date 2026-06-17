@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Spot the real code</h1>
+<!-- A standalone alnum token that LOOKS like a code (it has digits) appears
+     before the labelled one. A standalone-first scan would submit this decoy;
+     the labelled "Code: ..." must take precedence. -->
+<div>XJ47PD</div>
+<p>Code: GD3K8M is the one to enter.</p>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'GD3K8M') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

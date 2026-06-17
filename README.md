@@ -11,8 +11,10 @@ The solver is deterministic DOM logic — no LLM calls, no screenshots, zero tok
 - Click-to-reveal ("Reveal Code" buttons)
 - Hidden DOM codes (`data-challenge-code` attribute)
 - Inline labelled codes ("Code: ABC123" / "code is ABC123")
+- Standalone codes — prefers a digit-bearing line, so 6-letter distractor words ("PUZZLE", "REVEAL") aren't mistaken for a code
 - Popup modals — Dismiss / Decline / Close / icon-only ×, including fake-close decoys
 - Radio quiz modals — picks "Correct", not "**In**correct" (substring traps)
+- "I agree" / "I'm human" gates — checks the box only when it's keeping the submit button disabled
 - Distractor avoidance — exact-text matching so "Accept All" / "Close Account" style buttons are never clicked
 
 ## Setup
@@ -48,7 +50,8 @@ agent.py (Playwright driver)
   ├─ opens the site, clicks START
   ├─ per step: injects fast_solver.js and calls solveStepLoop()
   │     └─ polls every ~40ms: scroll → close modals → click reveals →
-  │        answer radio quizzes → hunt for the code → type + submit
+  │        satisfy submit gates → answer radio quizzes → hunt for the
+  │        code → type + submit
   ├─ confirms progress from the URL (/stepN), tolerating full navigations
   └─ records metrics.json (per-step times, attempts, codes, errors)
 ```

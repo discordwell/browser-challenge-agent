@@ -9,9 +9,11 @@ Challenge types handled (see fast_solver.js for the in-page logic):
 1. Scroll-revealed codes (scroll 500px+ to reveal)
 2. Timer-delayed codes (polled until they appear)
 3. Hidden DOM codes (data-challenge-code attribute)
-4. Direct / labelled code display ("Code: ABC123")
+4. Direct / labelled code display ("Code: ABC123"); standalone codes prefer
+   a digit-bearing line over 6-letter distractor words
 5. Modal dismissal (Dismiss / Decline / Close / icon-only ×)
 6. Radio selection modals (pick "Correct", not "Incorrect")
+7. "I agree" / "I'm human" gates (check the box to enable a disabled submit)
 """
 
 import argparse

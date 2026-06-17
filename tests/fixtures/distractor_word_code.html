@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>FINALE</h1>
+<p>Several 6-letter decoys are on this page — only one line is the real code.</p>
+<div>RESULT</div>
+<div>PUZZLE</div>
+<div>ZX8W4Q</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<script>
+  // The distractor lines ("FINALE", "RESULT", "PUZZLE") are all six uppercase
+  // letters, so a naive ^[A-Z0-9]{6}$ scan would grab the first one. The real
+  // code is the only line containing a digit.
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'ZX8W4Q') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

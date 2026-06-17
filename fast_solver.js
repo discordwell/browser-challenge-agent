@@ -9,7 +9,10 @@
  * 5. Radio selection modals (pick the "Correct" option, not "Incorrect")
  * 6. Popup modals (Dismiss/Decline/Close/icon-only ×)
  * 7. Codes shown inline ("Code: ABC123" / "code is ABC123") or as a
- *    standalone 6-character line
+ *    standalone 6-character line (digit-bearing lines win over all-letter
+ *    distractors; a labelled code wins over a loose standalone token)
+ * 8. Submit gated behind an "I agree" / "I'm human" checkbox (checked only
+ *    while the submit button is actually disabled)
  *
  * Two ways to run it:
  *   - Console: start the challenge, then paste this whole file into the
@@ -41,9 +44,23 @@ function looksFinished() {
 }
 
 /**
- * One DOM pass: dismiss modals, trigger reveals, pick radios, hunt for the
- * code, then type + submit it. `state` persists across passes within a step
- * so the same code isn't re-submitted every few milliseconds.
+ * The page's main submit control: a real submit button, else the first button
+ * whose text starts with "submit" ("Submit Code" included — that IS the code
+ * button). The modal-confirm pass has its own scan that deliberately avoids
+ * "Submit Code", so it never collides with this.
+ */
+function findSubmitButton() {
+    return document.querySelector('button[type="submit"]') ||
+        Array.prototype.find.call(
+            document.querySelectorAll('button'),
+            function (b) { return /^submit/i.test((b.textContent || '').trim()); }
+        ) || null;
+}
+
+/**
+ * One DOM pass: dismiss modals, trigger reveals, satisfy submit gates, pick
+ * radios, hunt for the code, then type + submit it. `state` persists across
+ * passes within a step so the same code isn't re-submitted every few ms.
  */
 async function solveOnePass(state) {
     state.actions = state.actions || [];
@@ -68,6 +85,19 @@ async function solveOnePass(state) {
     );
     if (revealBtn) {
         try { revealBtn.click(); act('reveal'); } catch (e) {}
+    }
+
+    // Submit gates: some steps keep the submit button disabled behind an
+    // "I agree" / "I'm human" checkbox. Only act while the button is actually
+    // disabled, so ordinary pages are untouched and stray checkboxes (e.g. a
+    // newsletter opt-in) are never toggled when they aren't blocking us.
+    var gateBtn = findSubmitButton();
+    if (gateBtn && gateBtn.disabled) {
+        document.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+            if (!cb.checked) {
+                try { cb.click(); act('check:gate'); } catch (e) {}
+            }
+        });
     }
 
     // Radio modals: pick the option labelled "correct" — "incorrect" has a
@@ -95,34 +125,45 @@ async function solveOnePass(state) {
         await solverWait(20);
     }
 
-    // Hunt for the 6-character code.
-    var code = null;
+    // Hunt for the 6-character code. Gather a candidate from each source, then
+    // pick the most trustworthy. Every real code mixes letters and digits, so
+    // a digit-bearing value is preferred — that stops both a 6-letter word
+    // after "code" ("the code is HIDDEN") and a standalone distractor word
+    // ("PUZZLE") from winning over the real code.
+    var code = null, source = null;
+    var text = document.body.innerText || '';
+    var hasDigit = function (s) { return /[0-9]/.test(s); };
+
+    // (a) Explicit hidden attribute — unambiguous.
     var codeEl = document.querySelector('[data-challenge-code]');
-    if (codeEl) {
-        code = codeEl.getAttribute('data-challenge-code');
-        if (code) act('code-source:data-attr');
+    var attrCode = codeEl && codeEl.getAttribute('data-challenge-code');
+
+    // (b) Labelled inline code ("Code: ABC123" / "CODE: ABC123" / "code is
+    //     ABC123"). The value must sit on the SAME line as the keyword ([^\S\n]
+    //     is whitespace but not newlines) so the "Code" in a "Submit Code"
+    //     button can't reach a token below it. \b keeps "barcode"/"decode" out.
+    var labelledMatch = text.match(/\b(?:CODE|[Cc]ode)[^\S\n]*(?:is|:)?[^\S\n]*([A-Z0-9]{6})(?![A-Z0-9])/);
+    var labelledCode = labelledMatch && labelledMatch[1];
+
+    // (c) A standalone 6-char line, digit-bearing preferred.
+    var standaloneCode = null, firstStandalone = null;
+    var lines = text.split('\n');
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!/^[A-Z0-9]{6}$/.test(line)) continue;
+        if (firstStandalone === null) firstStandalone = line;
+        if (hasDigit(line)) { standaloneCode = line; break; }
     }
-    if (!code) {
-        var text = document.body.innerText || '';
-        var lines = text.split('\n');
-        for (var i = 0; i < lines.length; i++) {
-            if (/^[A-Z0-9]{6}$/.test(lines[i].trim())) {
-                code = lines[i].trim();
-                act('code-source:standalone-line');
-                break;
-            }
-        }
-        if (!code) {
-            // "Code: ABC123" / "CODE: ABC123" / "code is ABC123". The \b
-            // keeps "barcode"/"decode" from matching, and the value class is
-            // uppercase-only so prose after the word "code" can't match.
-            var m = text.match(/\b(?:CODE|[Cc]ode)\s*(?:is|:)?\s*([A-Z0-9]{6})(?![A-Z0-9])/);
-            if (m) {
-                code = m[1];
-                act('code-source:labelled');
-            }
-        }
-    }
+
+    // Preference: explicit attribute, then a digit-bearing labelled code (the
+    // most pointed-to), then a digit-bearing standalone line, then any
+    // standalone line, and only as a last resort an all-letter labelled value.
+    if (attrCode) { code = attrCode; source = 'data-attr'; }
+    else if (labelledCode && hasDigit(labelledCode)) { code = labelledCode; source = 'labelled'; }
+    else if (standaloneCode) { code = standaloneCode; source = 'standalone-line'; }
+    else if (firstStandalone) { code = firstStandalone; source = 'standalone-line'; }
+    else if (labelledCode) { code = labelledCode; source = 'labelled'; }
+    if (code) act('code-source:' + source);
 
     // Type + submit. Don't hammer: if this code were right the step would
     // have advanced already, so only re-submit the same code occasionally in
@@ -135,11 +176,7 @@ async function solveOnePass(state) {
         if (!recentlySubmitted) {
             var input = document.querySelector('input[placeholder*="code" i]') ||
                 document.querySelector('input[type="text"]');
-            var submit = document.querySelector('button[type="submit"]') ||
-                Array.prototype.find.call(
-                    document.querySelectorAll('button'),
-                    function (b) { return /^submit/i.test((b.textContent || '').trim()); }
-                );
+            var submit = findSubmitButton();
             if (input && submit) {
                 // Native setter so React's value tracking sees the change.
                 var setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;

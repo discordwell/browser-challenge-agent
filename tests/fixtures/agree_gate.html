@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Confirm to continue</h1>
+<div>GT5R9K</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <label><input type="checkbox" id="agree"> I confirm I am human</label>
+  <button id="submit" type="submit" disabled>Submit Code</button>
+</form>
+<script>
+  // The submit button stays disabled until the "I am human" box is checked,
+  // so the solver must check it before the code can be submitted.
+  window.__submitted = null;
+  var box = document.getElementById('agree');
+  var btn = document.getElementById('submit');
+  box.addEventListener('change', function () { btn.disabled = !box.checked; });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (btn.disabled) return;
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'GT5R9K') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

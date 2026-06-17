@@ -2,6 +2,30 @@
 
 ## Session Summaries
 
+### 2026-06-17T08:10Z — Code-detection hardening + submit-gate handling
+- Hardened `fast_solver.js` code detection against distractors (the project's
+  stated theme). Now gathers a candidate from each source (data-attr, labelled
+  "Code:", standalone line) and picks by confidence: explicit attr →
+  digit-bearing labelled → digit-bearing standalone → any standalone →
+  all-letter labelled (last resort). Every real code mixes letters and digits,
+  so that preference stops both a standalone distractor word ("PUZZLE") and a
+  6-letter word after "code" ("the code is HIDDEN") from being submitted, while
+  still finding an all-letter code if that's all there is.
+- Tightened the labelled regex to same-line only (`[^\S\n]` instead of `\s`) so
+  "Code" in a "Submit Code" button can't reach a token on the next line.
+- New pattern: submit gated behind an "I agree"/"I'm human" checkbox. The
+  solver checks unticked boxes only while the submit button is actually
+  `disabled`, so normal pages / unrelated checkboxes are untouched.
+- Extracted `findSubmitButton()` (used by the new gate check and the existing
+  code-submit path; modal-confirm keeps its own "never Submit Code" scan).
+- IMPORTANT review catch: an interim version reordered labelled before
+  standalone but let an all-letter labelled value win, so "the code is HIDDEN"
+  submitted "HIDDEN" and beat the digit-bearing code. Fixed by the digit
+  preference above; added `labelled_prose_distractor` regression test.
+- 4 new fixtures + tests (distractor words, labelled-beats-standalone,
+  labelled-prose, agree-gate); verified each FAILS against the buggy/pre-change
+  solver. Suite: 33 passing (was 29). `node --check` clean.
+
 ### 2026-06-11 — Solver unification, driver rewrite, first test suite
 - Made `fast_solver.js` the single source of truth: `solveOnePass` /
   `solveStepLoop` / `solveAllSteps` + `looksFinished`, with a scope-local
@@ -53,3 +77,11 @@
 - Local fixture testing works great: `page.route` on a fake
   `https://challenge.test` origin + pushState fixtures = full solver coverage
   with zero network.
+- `^[A-Z0-9]{6}$` matches any 6-letter uppercase word (PUZZLE/REVEAL/SUBMIT),
+  which is exactly the distractor shape this challenge uses. All real codes
+  seen so far mix letters and digits, so the standalone scan prefers a
+  digit-bearing line; explicit sources (data-attr, labelled "Code:") are tried
+  first so a loose token can't beat a pointed-to code.
+- `innerText` is newline-joined across elements, so a label regex with `\s*`
+  will span element boundaries — "Submit Code\n<token>" looked like a labelled
+  code. Constrain label→value matches to the same line (`[^\S\n]`).

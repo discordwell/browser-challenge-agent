@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Read closely</h1>
+<!-- "code is HIDDEN" is natural prose: HIDDEN is a 6-letter word sitting right
+     after "code is", so a labelled match that accepts any 6 uppercase chars
+     would grab it. The real, digit-bearing code is the div below. -->
+<p>The code is HIDDEN below — scroll down to find it.</p>
+<div>ZX8W4Q</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'ZX8W4Q') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>
