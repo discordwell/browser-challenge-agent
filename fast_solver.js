@@ -3,7 +3,7 @@
  *
  * Handles all known challenge patterns:
  * 1. Scroll-reveal (500px+)
- * 2. Click-to-reveal ("Reveal Code" button)
+ * 2. Click-to-reveal ("Reveal Code" / "Show Code" / "Unlock Code" button)
  * 3. Timer-delayed (poll until the code appears)
  * 4. Hidden DOM attribute (data-challenge-code)
  * 5. Quiz modals — radio buttons or a <select> dropdown (pick the "Correct"
@@ -60,6 +60,21 @@ function findSubmitButton() {
 }
 
 /**
+ * Does this button text read like a "reveal the code" control? Any text
+ * containing "reveal" qualifies (e.g. "Reveal", "Reveal Code"). Other
+ * phrasings ("Show Code", "Unlock Code", "Display the code") qualify only when
+ * they also mention the code, so generic buttons ("Show menu", "Get started")
+ * and the "Submit Code" control are left alone — same distractor-safety stance
+ * as the modal-close matcher.
+ */
+function isRevealButton(text) {
+    var t = (text || '').toLowerCase();
+    if (t.indexOf('reveal') !== -1) return true;
+    if (t.indexOf('code') === -1) return false;
+    return /\b(show|unlock|display|view|see|get|generate)\b/.test(t);
+}
+
+/**
  * Set an <input> or <select> value the way React expects: through the element's
  * native value setter (read off its own prototype, so it's correct for both
  * element types), then fire input + change so a controlled component re-renders.
@@ -93,10 +108,10 @@ async function solveOnePass(state) {
         }
     });
 
-    // Click-to-reveal challenges.
+    // Click-to-reveal challenges ("Reveal Code", "Show Code", "Unlock Code", …).
     var revealBtn = Array.prototype.find.call(
         document.querySelectorAll('button'),
-        function (b) { return (b.textContent || '').toLowerCase().indexOf('reveal') !== -1; }
+        function (b) { return isRevealButton(b.textContent); }
     );
     if (revealBtn) {
         try { revealBtn.click(); act('reveal'); } catch (e) {}

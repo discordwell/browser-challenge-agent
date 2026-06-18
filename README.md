@@ -8,7 +8,9 @@ The solver is deterministic DOM logic — no LLM calls, no screenshots, zero tok
 
 - Scroll-revealed codes (revealed past ~500px)
 - Timer-delayed codes (polled until they appear)
-- Click-to-reveal ("Reveal Code" buttons)
+- Click-to-reveal — "Reveal Code", and other wordings of the same control
+  ("Show Code" / "Unlock Code" / "Display the code"); generic buttons that don't
+  mention the code are left alone
 - Hidden DOM codes (`data-challenge-code` attribute)
 - Inline labelled codes ("Code: ABC123" / "code is ABC123")
 - Standalone codes — prefers a digit-bearing line, so 6-letter distractor words ("PUZZLE", "REVEAL") aren't mistaken for a code

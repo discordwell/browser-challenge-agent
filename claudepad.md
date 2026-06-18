@@ -2,6 +2,35 @@
 
 ## Session Summaries
 
+### 2026-06-17T19:15Z — Reveal-verb variants + looksFinished invariant tests
+- Capability gap: click-to-reveal only matched the literal substring `reveal`,
+  so a "Show Code" / "Unlock Code" / "Display the code" button (same UI pattern,
+  different wording) was never clicked and the step couldn't be solved.
+  Confirmed RED with a new `show_code_button.html` fixture against the old
+  solver (never advances).
+- Fixed with a top-level `isRevealButton(text)` helper (re-paste-safe
+  `function`): any text containing "reveal" qualifies; other reveal verbs
+  (`show|unlock|display|view|see|get|generate`, word-boundary) qualify only when
+  the text ALSO mentions "code". So "Submit Code", "Show menu", "Get started",
+  modal buttons, and START are all left alone — same distractor-safety stance as
+  the modal-close matcher. Strictly a superset of the old matches among the
+  fixtures (verified: no existing button is newly matched), so no regression;
+  `reveal_button` ("Reveal Code") still passes.
+- Added direct invariant tests for `looksFinished()` (previously only covered
+  indirectly): 6 completion-copy strings that must match + 4 lobby/progress
+  strings that must NOT — pins the documented "lobby copy like 'Complete 30
+  challenges…' must never read as completion" guarantee. Drive it via
+  `build_finished_probe()` (sets `__SOLVER_EMBEDDED__`, no auto-run) over
+  `document.body.innerText`.
+- Suite: 46 passing (was 35: +1 reveal, +10 looksFinished params). `node --check`
+  clean. Docs synced (README, ARCHITECTURE, agent.py docstring — the latter had
+  omitted click-to-reveal entirely).
+- Code review (2 parallel finders: reveal-matcher correctness + test-vacuity):
+  no findings. Confirmed "Submit Code" can't be mistaken for a reveal (word
+  boundary stops "submit"), compound words (showcase/overview/forget) don't
+  trip the verbs, and the looksFinished tests aren't vacuous (innerText setter
+  round-trips in headless Chromium).
+
 ### 2026-06-17T12:00Z — Select-dropdown quizzes + decoy-safe checkbox gates
 - New pattern: `<select>` dropdown quizzes. `solveOnePass` now picks the option
   whose text reads "correct" (reusing the radio's `isCorrectLabel`, so

@@ -8,13 +8,14 @@ Drives the shared in-page solver (fast_solver.js) with Playwright to complete
 Challenge types handled (see fast_solver.js for the in-page logic):
 1. Scroll-revealed codes (scroll 500px+ to reveal)
 2. Timer-delayed codes (polled until they appear)
-3. Hidden DOM codes (data-challenge-code attribute)
-4. Direct / labelled code display ("Code: ABC123"); standalone codes prefer
+3. Click-to-reveal codes ("Reveal Code" / "Show Code" / "Unlock Code" buttons)
+4. Hidden DOM codes (data-challenge-code attribute)
+5. Direct / labelled code display ("Code: ABC123"); standalone codes prefer
    a digit-bearing line over 6-letter distractor words
-5. Modal dismissal (Dismiss / Decline / Close / icon-only ×)
-6. Quiz modals — radio buttons or a <select> dropdown (pick "Correct", not
+6. Modal dismissal (Dismiss / Decline / Close / icon-only ×)
+7. Quiz modals — radio buttons or a <select> dropdown (pick "Correct", not
    "Incorrect")
-7. "I agree" / "I'm human" gates (check the gate-like box to enable a disabled
+8. "I agree" / "I'm human" gates (check the gate-like box to enable a disabled
    submit, leaving decoy checkboxes alone)
 """
 

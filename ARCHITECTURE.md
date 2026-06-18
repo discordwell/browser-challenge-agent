@@ -64,6 +64,10 @@
   (rejects "Incorrect"); and the modal-confirm pass clicks `Submit`/`Submit & …`
   but never `Submit Code`. A `<select>` is driven through the native value
   setter + `change` event, the same React-aware path the code input uses.
+  Click-to-reveal buttons (`isRevealButton`) match anything containing
+  "reveal", plus other reveal verbs (show/unlock/display/view/see/get/generate)
+  only when the text also mentions the *code* — so "Show menu" or the
+  "Submit Code" control is never mistaken for a reveal.
 
 - **Code detection — gather candidates, prefer digits.** A candidate is
   collected from each source: the `data-challenge-code` attribute, a *labelled*

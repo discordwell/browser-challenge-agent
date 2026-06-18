@@ -2,7 +2,9 @@
 that replicate each known challenge pattern. No network access: every page is
 served from memory via request interception."""
 
-from agent import build_solver_script, solver_source
+import pytest
+
+from agent import build_finished_probe, build_solver_script, solver_source
 
 
 def run_solver(page, timeout_ms=8000, poll_ms=25, max_steps=30):
@@ -31,6 +33,18 @@ def test_reveal_button_is_clicked(challenge_page):
     assert result["advanced"] is True
     assert result["code"] == "RV5L9Q"
     assert "reveal" in result["actions"]
+
+
+def test_show_code_button_is_clicked(challenge_page):
+    # Same click-to-reveal pattern, worded "Show Code" rather than "Reveal
+    # Code": the reveal verb must be recognised by meaning, not just the
+    # literal word "reveal".
+    page = challenge_page("show_code_button.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "SH6W2K"
+    assert "reveal" in result["actions"]
+    assert page.evaluate("window.__submitted") == "SH6W2K"
 
 
 def test_hidden_data_attribute_code(challenge_page):
@@ -150,6 +164,34 @@ def test_select_dropdown_quiz_picks_correct_option(challenge_page):
     # "Incorrect option" is listed first; a substring match would pick it.
     assert page.evaluate("window.__wrongSelect") is False
     assert page.evaluate("window.__submitted") == "SL7K2D"
+
+
+@pytest.mark.parametrize("body_text", [
+    "Congratulations! You completed the challenge.",
+    "Challenge complete!",
+    "Well done, that's everything.",
+    "You did it!",
+    "All 30 challenges solved",
+    "All steps complete",
+])
+def test_looks_finished_matches_completion_copy(challenge_page, body_text):
+    page = challenge_page("data_attr.html", path="/complete")
+    page.evaluate("(t) => { document.body.innerText = t; }", body_text)
+    assert page.evaluate(build_finished_probe()) is True
+
+
+@pytest.mark.parametrize("body_text", [
+    # The lobby copy is the dangerous false positive: it talks about completing
+    # challenges but is NOT the completion page.
+    "Complete 30 challenges in under 5 minutes",
+    "Ready to start? Complete all the challenges!",
+    "Step 5 of 30 — keep going",
+    "Almost there, a few left to complete",
+])
+def test_looks_finished_rejects_lobby_and_progress_copy(challenge_page, body_text):
+    page = challenge_page("data_attr.html", path="/complete")
+    page.evaluate("(t) => { document.body.innerText = t; }", body_text)
+    assert page.evaluate(build_finished_probe()) is False
 
 
 def test_no_step_in_url_returns_without_solving(challenge_page):

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Click the button to get your code</h1>
+<!-- Same click-to-reveal pattern as reveal_button.html, but worded "Show
+     Code" instead of "Reveal Code": the solver must recognise the reveal verb
+     by meaning, not just the literal word "reveal". -->
+<button id="reveal" type="button">Show Code</button>
+<div id="code" style="display:none">SH6W2K</div>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('reveal').addEventListener('click', function () {
+    document.getElementById('code').style.display = 'block';
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'SH6W2K') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>
