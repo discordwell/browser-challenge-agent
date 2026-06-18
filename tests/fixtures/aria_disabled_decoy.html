@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Enter your code</h1>
+<p>Your code is AD8N1X, enter it below.</p>
+<!-- The submit button carries a STALE aria-disabled="true", but submission is
+     NOT actually gated — the handler ignores it and accepts the code. The only
+     checkbox is a non-gate "Remember me" opt-in. aria-disabled is a weak signal
+     (just an ARIA hint, not a click/submit blocker), so the solver must NOT
+     tick a non-gate-like box on its account; doing so would be a distractor
+     false-positive of exactly the kind this project guards against. -->
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <label><input type="checkbox" id="remember"> Remember me on this device</label>
+  <button id="submit" type="submit" aria-disabled="true">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    // Not gated: aria-disabled is cosmetic here and the box is irrelevant.
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'AD8N1X') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

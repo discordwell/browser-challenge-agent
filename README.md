@@ -16,7 +16,7 @@ The solver is deterministic DOM logic — no LLM calls, no screenshots, zero tok
 - Standalone codes — prefers a digit-bearing line, so 6-letter distractor words ("PUZZLE", "REVEAL") aren't mistaken for a code
 - Popup modals — Dismiss / Decline / Close / icon-only ×, including fake-close decoys
 - Quiz modals — radio buttons or a `<select>` dropdown; picks "Correct", not "**In**correct" (substring traps)
-- "I agree" / "I'm human" gates — checks the gate-like box only while it's keeping the submit button disabled, one box per poll, so a decoy "sign me up" checkbox is left unchecked
+- "I agree" / "I'm human" gates — checks the gate-like box only while it's keeping the submit button disabled, one box per poll, so a decoy "sign me up" checkbox is left unchecked. Both native `disabled` and the accessible/React `aria-disabled="true"` idiom count as gated; because `aria-disabled` is a weaker, sometimes-stale hint, a box is ticked on its account only when its label is an affirmative consent phrase ("I agree" / "I'm human"), never benign copy that merely mentions a keyword
 - Distractor avoidance — exact-text matching so "Accept All" / "Close Account" style buttons are never clicked
 
 ## Setup

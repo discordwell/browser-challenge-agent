@@ -2,6 +2,38 @@
 
 ## Session Summaries
 
+### 2026-06-18T11:53Z — aria-disabled submit gates (weak-signal, consent-filtered)
+- Capability gap: the agree-gate handler only treated a submit button as gated
+  when its NATIVE `.disabled` was set. React/accessible UIs commonly express a
+  gated control with `aria-disabled="true"` instead (stays focusable, click is
+  a no-op until satisfied). Such a gate was never satisfied — the code was typed
+  but submit kept no-opping and the step stalled. Confirmed RED with a new
+  `aria_disabled_gate.html` fixture against the committed solver.
+- First cut (just OR-ing `aria-disabled` into the existing condition) was caught
+  by adversarial review as a distractor-safety REGRESSION: the gate-like-label
+  logic is a SORT key, not a filter, so once the gate fired it ticked the
+  first-sorted unchecked box even on a non-gate page. Native `.disabled` is a
+  strong "real gate" signal so that's fine; `aria-disabled` is weak (advisory,
+  can be left stale), so a stale `aria-disabled` + an unchecked "Remember me"
+  box → wrongly ticked.
+- Fix: split signal strength. Native-disabled keeps the old behaviour (any
+  unchecked box, ranked by loose `gateLike`, DOM-order tiebreak). aria-only is
+  weak → tick a box ONLY when its label passes a new, tight `looksLikeGateConsent`
+  filter (affirmative consent: "I agree", "I accept the terms", "I consent",
+  "I'm (not a) human/robot/bot"). A second review caught that reusing the LOOSE
+  `gateLike` as the filter still over-matches benign copy ("new conditions",
+  "continue receiving"), hence the dedicated tight regex.
+- 3 fixtures + tests, each teeth-verified by temporarily reverting:
+  `aria_disabled_gate` (RED vs committed solver), `aria_disabled_decoy`
+  ("Remember me" — RED vs the naive no-filter widening), and
+  `aria_disabled_decoy_keyword` ("…new conditions…" — RED vs the loose-filter
+  version). `looksLikeGateConsent` also validated by a standalone Node battery
+  (11 gate phrasings match / 9 benign+distractor reject, incl. "Accept all
+  cookies"). Native-disabled fixtures (`agree_gate`, `agree_gate_distractor`,
+  `decoy_disabled_submit`) unchanged. Suite: 54 passing (was 51: +3). `node
+  --check` clean. Docs synced (README, ARCHITECTURE strong/weak-signal split,
+  fast_solver.js header, agent.py docstring).
+
 ### 2026-06-18T05:53Z — Submit/input targeting robustness (decoy-safe)
 - Three real interaction-layer gaps where the agent would silently get stuck on
   a plausible real-site DOM shape (code never typed/submitted, retries exhaust):

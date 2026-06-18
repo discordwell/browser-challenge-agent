@@ -16,7 +16,7 @@ Challenge types handled (see fast_solver.js for the in-page logic):
 7. Quiz modals — radio buttons or a <select> dropdown (pick "Correct", not
    "Incorrect")
 8. "I agree" / "I'm human" gates (check the gate-like box to enable a disabled
-   submit, leaving decoy checkboxes alone)
+   submit — native `disabled` or `aria-disabled` — leaving decoy checkboxes alone)
 """
 
 import argparse

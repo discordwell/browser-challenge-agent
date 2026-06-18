@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Enter your code</h1>
+<p>Your code is AK4M2Z, enter it below.</p>
+<!-- Like aria_disabled_decoy.html, but the benign opt-in's label deliberately
+     contains a ranking keyword ("conditions") that the LOOSE gate-like sort
+     regex would match. Submission is not gated. The solver must use the tighter
+     affirmative-consent filter for the weak aria-disabled signal, so a marketing
+     box that merely mentions "conditions"/"continue" is NOT a real gate and must
+     be left unchecked. -->
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <label><input type="checkbox" id="news"> Email me about new conditions and offers</label>
+  <button id="submit" type="submit" aria-disabled="true">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'AK4M2Z') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

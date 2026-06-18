@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Confirm to continue</h1>
+<div>AR7D2S</div>
+<!-- React-style accessible gate: the submit button is marked aria-disabled
+     (not the native `disabled` attribute) until the "I agree" box is ticked.
+     It is natively clickable, but its handler no-ops while the box is unchecked,
+     so a gate keyed only off the native .disabled property never ticks the box
+     and the step can't be solved. -->
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <label><input type="checkbox" id="agree"> I agree to the terms</label>
+  <button id="submit" type="submit" aria-disabled="true">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  var box = document.getElementById('agree');
+  var btn = document.getElementById('submit');
+  box.addEventListener('change', function () {
+    btn.setAttribute('aria-disabled', box.checked ? 'false' : 'true');
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (btn.getAttribute('aria-disabled') === 'true') return;  // gated
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'AR7D2S') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

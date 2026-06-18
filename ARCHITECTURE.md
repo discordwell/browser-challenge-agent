@@ -99,13 +99,26 @@
 
 - **Submit gates.** Some steps disable the submit button until an "I agree" /
   "I'm human" checkbox is ticked. The solver acts only while the submit button
-  is actually `disabled`, and ticks just **one** box per pass — the most
-  gate-like unchecked one (label matching `agree|consent|terms|human|robot|…`),
-  letting the next poll observe whether submit unlocked. So ordinary pages are
-  untouched, and a decoy box (a newsletter opt-in listed alongside the real
-  gate) is never ticked once the real box has already enabled the button. This
-  also gives a React re-render a tick to land between checking and re-reading
-  `disabled`.
+  is gated, ticks just **one** box per pass, then lets the next poll observe
+  whether submit unlocked — so ordinary pages are untouched, a decoy box (a
+  newsletter opt-in) is never ticked once the real box has enabled the button,
+  and a React re-render has a tick to land between checking and re-reading the
+  state. "Gated" has two strengths, treated differently because they carry
+  different confidence:
+  - The native `disabled` property is a **strong** signal — a disabled submit
+    almost always *is* a real gate — so any unchecked box is a candidate, ranked
+    by the loose `gateLike` keyword (`agree|consent|terms|human|robot|…`) with
+    DOM order as the tiebreak.
+  - `aria-disabled="true"` is a **weak** signal — accessible/React UIs mark a
+    gated control this way (keeping it focusable, click a no-op), but it's only
+    an ARIA hint that doesn't block clicks/submission and can be left *stale* on
+    a non-gate control. So under aria-only gating the solver ticks a box **only**
+    when its label is an affirmative consent phrase (`looksLikeGateConsent`: "I
+    agree", "I accept the terms", "I'm (not a) human/robot/bot"), never on a
+    bare DOM-order fallback or the loose ranking keyword. That stops a stale
+    `aria-disabled` from ticking a decoy "Remember me" — or benign copy that
+    merely contains a keyword like "new **conditions**" / "**continue**
+    receiving" — while genuine gates ("I agree" / "I'm human") still match.
 
 - **Throttled submission.** A found code is typed via the native value setter
   (React compatibility) and submitted once; the same code is only re-submitted

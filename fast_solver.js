@@ -13,8 +13,9 @@
  *    standalone 6-character line (digit-bearing lines win over all-letter
  *    distractors; a labelled code wins over a loose standalone token)
  * 8. Submit gated behind an "I agree" / "I'm human" checkbox (only while the
- *    submit button is disabled, one gate-like box per pass, so decoy boxes
- *    such as a newsletter opt-in are left alone once submit unlocks)
+ *    submit button is disabled — native `disabled` or `aria-disabled="true"` —
+ *    one gate-like box per pass, so decoy boxes such as a newsletter opt-in are
+ *    left alone once submit unlocks)
  *
  * Two ways to run it:
  *   - Console: start the challenge, then paste this whole file into the
@@ -98,6 +99,25 @@ function setNativeValue(el, value) {
 }
 
 /**
+ * Does this checkbox label read like an affirmative "I agree / I'm human"
+ * consent gate, as opposed to a marketing opt-in? Deliberately tighter than the
+ * loose `gateLike` ranking heuristic used for natively-disabled gates: this is
+ * a FILTER for the weak `aria-disabled` signal, where ticking the wrong box is
+ * a distractor mis-click. So it requires an affirmative gate phrase ("I agree",
+ * "I accept the terms", "I consent", "I'm (not a) human/robot/bot") and will
+ * NOT match benign copy that merely contains a keyword ("new conditions",
+ * "continue receiving updates", "remember me", "I confirm my email").
+ */
+function looksLikeGateConsent(text) {
+    var t = (text || '').toLowerCase().replace(/[’']/g, "'");
+    return /\bi (?:agree|consent|accept)\b/.test(t) ||
+        /\b(?:agree|consent) to\b/.test(t) ||
+        /\baccept (?:the )?terms\b/.test(t) ||
+        /\bi(?:'m| am) (?:not a )?(?:human|robot|bot)\b/.test(t) ||
+        /\bnot a (?:robot|bot)\b/.test(t);
+}
+
+/**
  * One DOM pass: dismiss modals, trigger reveals, satisfy submit gates, pick
  * radios, hunt for the code, then type + submit it. `state` persists across
  * passes within a step so the same code isn't re-submitted every few ms.
@@ -128,14 +148,29 @@ async function solveOnePass(state) {
     }
 
     // Submit gates: some steps keep the submit button disabled behind an
-    // "I agree" / "I'm human" checkbox. Only act while the button is actually
-    // disabled, so ordinary pages and unrelated checkboxes (e.g. a newsletter
-    // opt-in) are left alone. Check ONE box per pass — the most gate-like
-    // unchecked one — then let the next poll see whether submit unlocked. That
-    // way a decoy "sign me up" box isn't toggled once the real box has already
-    // enabled the button, and a React re-render has a tick to land.
+    // "I agree" / "I'm human" checkbox. Only act while the button is gated, so
+    // ordinary pages and unrelated checkboxes (e.g. a newsletter opt-in) are
+    // left alone. Check ONE box per pass — then let the next poll see whether
+    // submit unlocked — so a decoy box isn't toggled once the real box has
+    // already enabled the button, and a React re-render has a tick to land.
+    //
+    // Two strengths of "gated":
+    //   - native `disabled` is a strong signal — a disabled submit almost
+    //     always IS a real gate — so tick the best-guess box: gate-like label
+    //     preferred, DOM order as the tiebreak when none look gate-like.
+    //   - aria-disabled="true" is only an ARIA hint (it doesn't block clicks or
+    //     submission and can be left stale on a non-gate control), so treat it
+    //     as a weak signal: act ONLY on a box whose label is an affirmative
+    //     consent phrase (looksLikeGateConsent), never on a bare DOM-order
+    //     fallback and never on the loose ranking keyword. That keeps a decoy
+    //     "Remember me" box — or benign copy that merely contains a keyword
+    //     ("new conditions", "continue receiving") — from being ticked when a
+    //     non-gated submit just carries aria-disabled. Genuine accessible gates
+    //     still say "I agree" / "I'm human", so they match.
     var gateBtn = findSubmitButton();
-    if (gateBtn && gateBtn.disabled) {
+    var nativelyDisabled = !!(gateBtn && gateBtn.disabled);
+    var ariaDisabled = !!(gateBtn && gateBtn.getAttribute('aria-disabled') === 'true');
+    if (nativelyDisabled || ariaDisabled) {
         var gateLike = /agree|consent|terms|condition|human|robot|confirm|continue|proceed/;
         var checkboxText = function (cb) {
             var label = cb.closest && cb.closest('label');
@@ -147,13 +182,17 @@ async function solveOnePass(state) {
             document.querySelectorAll('input[type="checkbox"]'),
             function (cb) { return !cb.checked; }
         );
+        // Strong (native-disabled) signal: any unchecked box is a candidate.
+        // Weak (aria-only) signal: only an affirmative consent label qualifies.
+        var candidates = nativelyDisabled ? unchecked :
+            unchecked.filter(function (cb) { return looksLikeGateConsent(checkboxText(cb)); });
         // Gate-like labels first; the sort is stable, so DOM order breaks ties.
-        unchecked.sort(function (a, b) {
+        candidates.sort(function (a, b) {
             return (gateLike.test(checkboxText(b)) ? 1 : 0) -
                 (gateLike.test(checkboxText(a)) ? 1 : 0);
         });
-        if (unchecked.length) {
-            try { unchecked[0].click(); act('check:gate'); } catch (e) {}
+        if (candidates.length) {
+            try { candidates[0].click(); act('check:gate'); } catch (e) {}
         }
     }
 

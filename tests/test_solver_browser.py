@@ -228,6 +228,48 @@ def test_disabled_decoy_input_does_not_trip_the_gate(challenge_page):
     assert "check:gate" not in result["actions"]
 
 
+def test_aria_disabled_submit_gate_is_satisfied(challenge_page):
+    # React-style accessible gate: the submit button is aria-disabled="true"
+    # (not the native `disabled` attribute) until the "I agree" box is ticked.
+    # A gate keyed only off `.disabled` would never tick the box, so the code is
+    # typed but the submit handler keeps no-opping and the step never advances.
+    page = challenge_page("aria_disabled_gate.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "AR7D2S"
+    assert page.evaluate("window.__submitted") == "AR7D2S"
+    assert page.evaluate("document.getElementById('agree').checked") is True
+    assert "check:gate" in result["actions"]
+
+
+def test_stale_aria_disabled_does_not_tick_decoy_box(challenge_page):
+    # aria-disabled is only a weak gate signal: a non-gated submit can carry a
+    # stale aria-disabled="true". With just a non-gate "Remember me" box present,
+    # the solver must NOT tick it (that would be a distractor false-positive) —
+    # while still typing and submitting the code, which isn't actually gated.
+    page = challenge_page("aria_disabled_decoy.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "AD8N1X"
+    assert page.evaluate("window.__submitted") == "AD8N1X"
+    assert page.evaluate("document.getElementById('remember').checked") is False
+    assert "check:gate" not in result["actions"]
+
+
+def test_aria_disabled_keyword_decoy_box_is_not_ticked(challenge_page):
+    # The weak aria-disabled signal must use the tight affirmative-consent
+    # filter, not the loose ranking keyword set: a benign marketing box whose
+    # label merely contains "conditions" must NOT be ticked, even though that
+    # word is in the gate-like ranking regex. The code still submits (ungated).
+    page = challenge_page("aria_disabled_decoy_keyword.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "AK4M2Z"
+    assert page.evaluate("window.__submitted") == "AK4M2Z"
+    assert page.evaluate("document.getElementById('news').checked") is False
+    assert "check:gate" not in result["actions"]
+
+
 @pytest.mark.parametrize("body_text", [
     "Congratulations! You completed the challenge.",
     "Challenge complete!",
