@@ -69,6 +69,22 @@
   only when the text also mentions the *code* — so "Show menu" or the
   "Submit Code" control is never mistaken for a reveal.
 
+- **Submit/input targeting.** The code field is the first input whose
+  placeholder mentions "code", else the first text-like input —
+  `text`/`search`/a bare `<input>` (no `type`, which defaults to text) — so a
+  form that never spells out `type="text"` is still handled. `findSubmitButton`
+  matches a real submit control (`<button type="submit">` **or**
+  `<input type="submit">`, whatever its label) and accepts an optional scope. A
+  `<button type="submit">` is preferred over an `<input type="submit">` — queried
+  separately, buttons first, because a grouped selector returns the first match
+  in *DOM order*, so a decoy `<input type="submit">` placed before the real
+  button would otherwise shadow it.
+  The code-submit path scopes the search to the code field's own `<form>` first,
+  so the right control wins regardless of its wording ("Verify Code",
+  "Continue", …) and a decoy form's submit listed elsewhere on the page (a
+  newsletter "Subscribe") is never clicked. It falls back to a document-wide
+  search only for an input that sits outside any form.
+
 - **Code detection — gather candidates, prefer digits.** A candidate is
   collected from each source: the `data-challenge-code` attribute, a *labelled*
   code (`Code: ABC123`) whose value must sit on the same line as the keyword

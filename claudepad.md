@@ -2,6 +2,37 @@
 
 ## Session Summaries
 
+### 2026-06-18T05:53Z — Submit/input targeting robustness (decoy-safe)
+- Three real interaction-layer gaps where the agent would silently get stuck on
+  a plausible real-site DOM shape (code never typed/submitted, retries exhaust):
+  1. Code field only found via `input[placeholder*="code"]` or `input[type="text"]`
+     — a `type="search"` or bare `<input>` (no type) was missed.
+  2. `findSubmitButton` scanned `<button>` only — an `<input type="submit">` was
+     never found, so the code was never submitted.
+  3. Submit was a document-wide "first `button[type="submit"]`" search, so a
+     decoy form's submit (newsletter "Subscribe" listed before the real form)
+     got clicked instead — against the project's distractor theme.
+- Fixes in `fast_solver.js`: input selector falls back through
+  `text → search → bare input:not([type])`; `findSubmitButton(scope)` takes an
+  optional scope and also matches `input[type="submit"]`; the code-submit path
+  scopes to the code field's own `<form>` first (so a real submit wins whatever
+  its label — "Verify Code"/"Continue" — and a decoy form's submit is never
+  clicked), falling back to the document-wide search only for form-less inputs.
+- 3 fixtures + tests (`search_input`, `input_submit`, `multi_form_submit`),
+  each confirmed RED against the pre-change solver, GREEN after.
+- Code review (1 adversarial finder, empirically verified both ways) found 2 REAL
+  regressions from a grouped `querySelector('button[type="submit"], input[type=
+  "submit"]')`: it returns the first match in DOM ORDER, so a decoy
+  `<input type="submit">` before the real button shadowed it. Hit the two
+  *unscoped* call sites — the global fallback (form-less code input → wrong click)
+  and the agree-gate's `.disabled` check (a disabled decoy input tripped the gate
+  and ticked a decoy box). Fixed by querying `button[type="submit"]` FIRST, then
+  `input[type="submit"]` (separate queries, buttons preferred). Locked in with 2
+  more RED→GREEN regression fixtures (`decoy_input_submit`, `decoy_disabled_submit`).
+- Suite: 51 passing (was 46: +5). `node --check` clean. Docs synced (README
+  design-choices bullet, ARCHITECTURE "Submit/input targeting" incl. the
+  grouped-selector DOM-order pitfall).
+
 ### 2026-06-17T19:15Z — Reveal-verb variants + looksFinished invariant tests
 - Capability gap: click-to-reveal only matched the literal substring `reveal`,
   so a "Show Code" / "Unlock Code" / "Display the code" button (same UI pattern,
@@ -143,3 +174,12 @@
 - `innerText` is newline-joined across elements, so a label regex with `\s*`
   will span element boundaries — "Submit Code\n<token>" looked like a labelled
   code. Constrain label→value matches to the same line (`[^\S\n]`).
+- A grouped `querySelector('a, b')` returns the first element matching EITHER
+  selector in DOM ORDER — NOT "all of selector a, then selector b". So adding a
+  second alternative can let a decoy that appears earlier shadow the preferred
+  match. When priority matters (prefer `<button type=submit>` over
+  `<input type=submit>`), query them as SEPARATE `querySelector` calls in
+  preference order. This is the distractor-safe shape `findSubmitButton` uses.
+- The code field is often NOT inside a `<form>` on this site (React divs), so
+  `input.form` can be null — the submit search must fall back to document-wide
+  when it is, but prefer the input's own form when present (decoy-form safety).

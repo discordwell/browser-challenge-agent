@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Confirm to continue</h1>
+<p>Your code is DD3K7P, enter it below.</p>
+<!-- A decoy DISABLED <input type="submit"> appears before the real, ENABLED
+     submit button. The real submit is not gated, so no checkbox should ever be
+     ticked; mistaking the disabled decoy for the main submit would wrongly trip
+     the agree-gate path and check the decoy "I agree" box. -->
+<input id="decoy" type="submit" value="Locked" disabled>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <label><input type="checkbox" id="agree"> I agree to the terms</label>
+  <button id="go" type="submit">Submit Code</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'DD3K7P') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Almost done</h1>
+<p>Your code is MF7K3D, enter it in the code form.</p>
+
+<!-- Decoy newsletter form: it appears first and has its own submit button, so
+     a document-wide "first submit button" search clicks Subscribe instead of
+     submitting the real code form. -->
+<form id="news">
+  <input type="email" placeholder="Your email for updates">
+  <button type="submit">Subscribe</button>
+</form>
+
+<!-- The real challenge form. Its submit button is labelled "Verify Code", not
+     "Submit", so only its type="submit" + shared form with the code field
+     identifies it. -->
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <button type="submit">Verify Code</button>
+</form>
+
+<script>
+  window.__subscribed = false;
+  window.__submitted = null;
+  document.getElementById('news').addEventListener('submit', function (e) {
+    e.preventDefault();
+    window.__subscribed = true;  // a wrong click lands here and goes nowhere
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'MF7K3D') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

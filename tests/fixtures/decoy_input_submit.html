@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Enter your code</h1>
+<p>Your code is DC9Y1S, enter it below.</p>
+<!-- No <form>: the code field is form-less, so the solver falls back to the
+     document-wide submit search. A decoy <input type="submit"> appears BEFORE
+     the real submit button; it must not shadow the real one. -->
+<input id="input" type="text" placeholder="Enter code">
+<input id="decoy" type="submit" value="Pay now">
+<button id="go" type="submit">Submit</button>
+<script>
+  window.__decoy = false;
+  window.__submitted = null;
+  document.getElementById('decoy').addEventListener('click', function (e) {
+    e.preventDefault();
+    window.__decoy = true;  // a wrong click lands here and goes nowhere
+  });
+  document.getElementById('go').addEventListener('click', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'DC9Y1S') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

@@ -66,6 +66,12 @@ Design choices that matter:
   appear instead of waiting a fixed worst-case delay per step.
 - **Native value setter** — codes are typed via the native `value` setter +
   `input` event so React-controlled inputs register the change.
+- **Form-scoped submit** — the code is submitted through the code field's own
+  `<form>`, so a real submit control wins whatever its label ("Verify Code",
+  "Continue") and a decoy form's button (a newsletter "Subscribe" above the
+  real form) is never clicked. Both `<button type="submit">` and
+  `<input type="submit">` count, and the code field can be a `text`, `search`,
+  or bare `<input>`.
 - **Submission throttling** — a found code is submitted once, then only
   re-submitted occasionally, rather than hammering the form on every poll.
 

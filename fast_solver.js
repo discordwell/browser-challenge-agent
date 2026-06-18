@@ -46,15 +46,25 @@ function looksFinished() {
 }
 
 /**
- * The page's main submit control: a real submit button, else the first button
- * whose text starts with "submit" ("Submit Code" included — that IS the code
- * button). The modal-confirm pass has its own scan that deliberately avoids
- * "Submit Code", so it never collides with this.
+ * The page's main submit control: a real submit control (button OR
+ * <input type="submit">, whatever its label), else the first button whose text
+ * starts with "submit" ("Submit Code" included — that IS the code button). Pass
+ * a `scope` (e.g. the code field's <form>) to search within it first, so the
+ * right submit wins even when its label isn't "Submit" and a decoy form's
+ * submit sits elsewhere on the page. The modal-confirm pass has its own scan
+ * that deliberately avoids "Submit Code", so it never collides with this.
+ *
+ * A real <button type="submit"> is preferred over an <input type="submit">
+ * (queried separately, buttons first) rather than via one grouped selector —
+ * grouped querySelector returns the first match in DOM order, so a decoy
+ * <input type="submit"> placed before the real button would otherwise shadow it.
  */
-function findSubmitButton() {
-    return document.querySelector('button[type="submit"]') ||
+function findSubmitButton(scope) {
+    scope = scope || document;
+    return scope.querySelector('button[type="submit"]') ||
+        scope.querySelector('input[type="submit"]') ||
         Array.prototype.find.call(
-            document.querySelectorAll('button'),
+            scope.querySelectorAll('button'),
             function (b) { return /^submit/i.test((b.textContent || '').trim()); }
         ) || null;
 }
@@ -239,9 +249,21 @@ async function solveOnePass(state) {
         var recentlySubmitted = state.lastSubmitted === code &&
             (Date.now() - state.lastSubmitTime) < 800;
         if (!recentlySubmitted) {
+            // The code field: prefer one whose placeholder mentions "code", else
+            // the first text-like input — text, search, or a bare <input> with no
+            // type (which defaults to text). The extra types matter because a real
+            // form may never spell out type="text".
             var input = document.querySelector('input[placeholder*="code" i]') ||
-                document.querySelector('input[type="text"]');
-            var submit = findSubmitButton();
+                document.querySelector('input[type="text"]') ||
+                document.querySelector('input[type="search"]') ||
+                document.querySelector('input:not([type])');
+            // Submit through the code field's OWN form when it has one, so the
+            // real submit control wins regardless of its label ("Verify Code",
+            // "Continue", …) and a decoy form's submit (e.g. a newsletter
+            // "Subscribe" listed first) is never clicked. Fall back to a
+            // document-wide search for an input that sits outside any form.
+            var submit = (input && input.form && findSubmitButton(input.form)) ||
+                findSubmitButton();
             if (input && submit) {
                 setNativeValue(input, code);  // React-aware; see helper above
                 try { submit.click(); act('submit:' + code); } catch (e) {}

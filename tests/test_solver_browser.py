@@ -166,6 +166,68 @@ def test_select_dropdown_quiz_picks_correct_option(challenge_page):
     assert page.evaluate("window.__submitted") == "SL7K2D"
 
 
+def test_code_typed_into_non_text_input(challenge_page):
+    # The code field is a type="search" input with a non-"code" placeholder, so
+    # it matches neither input[placeholder*="code"] nor input[type="text"]. The
+    # solver must still recognise it as the place to type the code.
+    page = challenge_page("search_input.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "SR5CH2"
+    assert page.evaluate("window.__submitted") == "SR5CH2"
+
+
+def test_input_type_submit_is_clicked(challenge_page):
+    # The submit control is an <input type="submit">, not a <button> — the
+    # button-only finder would miss it and never submit the code.
+    page = challenge_page("input_submit.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "IN8P2T"
+    assert page.evaluate("window.__submitted") == "IN8P2T"
+
+
+def test_submit_targets_the_code_forms_own_button(challenge_page):
+    # A decoy newsletter form appears first with its own submit button. Clicking
+    # the first submit button on the page would hit "Subscribe" and never submit
+    # the code; the solver must use the code field's own form ("Verify Code").
+    page = challenge_page("multi_form_submit.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "MF7K3D"
+    assert page.evaluate("window.__submitted") == "MF7K3D"
+    # The decoy form's submit must never be clicked.
+    assert page.evaluate("window.__subscribed") is False
+
+
+def test_decoy_input_submit_does_not_shadow_real_button(challenge_page):
+    # The code field is form-less (global submit search), and a decoy
+    # <input type="submit"> sits before the real <button type="submit">. A real
+    # submit button must still win over the earlier decoy input — picking by DOM
+    # order would click the decoy and never submit the code.
+    page = challenge_page("decoy_input_submit.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "DC9Y1S"
+    assert page.evaluate("window.__submitted") == "DC9Y1S"
+    assert page.evaluate("window.__decoy") is False
+
+
+def test_disabled_decoy_input_does_not_trip_the_gate(challenge_page):
+    # A disabled decoy <input type="submit"> precedes the real, enabled submit
+    # button. The agree-gate path keys off "the submit button is disabled"; if it
+    # mistook the disabled decoy for the main submit it would tick the decoy "I
+    # agree" box even though submit was never gated.
+    page = challenge_page("decoy_disabled_submit.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "DD3K7P"
+    assert page.evaluate("window.__submitted") == "DD3K7P"
+    # Submit was enabled all along, so the gate box must be left unchecked.
+    assert page.evaluate("document.getElementById('agree').checked") is False
+    assert "check:gate" not in result["actions"]
+
+
 @pytest.mark.parametrize("body_text", [
     "Congratulations! You completed the challenge.",
     "Challenge complete!",

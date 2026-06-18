@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Enter the answer below</h1>
+<p>Your code is SR5CH2, type it in to proceed.</p>
+<form id="form">
+  <!-- The code field is a type="search" input whose placeholder never says
+       "code", so neither the placeholder match nor input[type="text"] finds it. -->
+  <input id="input" type="search" placeholder="Type your answer">
+  <button type="submit">Submit</button>
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'SR5CH2') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

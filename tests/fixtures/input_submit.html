@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Enter your code</h1>
+<p>Your code is IN8P2T, enter it below.</p>
+<form id="form">
+  <input id="input" type="text" placeholder="Enter code">
+  <!-- The submit control is an <input type="submit">, not a <button>, so the
+       button-only finder never sees it and the code is never submitted. -->
+  <input id="go" type="submit" value="Submit">
+</form>
+<script>
+  window.__submitted = null;
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('input').value;
+    window.__submitted = v;
+    if (v === 'IN8P2T') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>
