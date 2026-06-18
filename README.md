@@ -1,5 +1,7 @@
 # Browser Challenge Agent
 
+[![CI](https://github.com/discordwell/browser-challenge-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/discordwell/browser-challenge-agent/actions/workflows/ci.yml)
+
 An automated browser agent for the [Browser Navigation Challenge](https://serene-frangipane-7fd25b.netlify.app) — 30 UI challenges (modals, forms, hidden codes, distractors) to complete in under 5 minutes.
 
 The solver is deterministic DOM logic — no LLM calls, no screenshots, zero token cost. One shared in-page script (`fast_solver.js`) holds all the challenge heuristics; the Python agent (`agent.py`) drives it with Playwright and records metrics.
@@ -93,6 +95,11 @@ The suite runs the real solver script against local HTML fixtures
 memory via request interception, so no network is touched. It also covers the
 Python driver loop (retries, navigation races, completion detection) and a
 full agent run against a miniature SPA version of the challenge site.
+
+GitHub Actions (`.github/workflows/ci.yml`) runs `node --check fast_solver.js`
+and the full `pytest` suite (with Playwright Chromium) on every push and pull
+request. Browser-backed tests skip themselves if Chromium can't be installed,
+so the pure-Python tests still gate the build.
 
 ## License
 
