@@ -22,6 +22,8 @@
 │   solveOnePass(state)   scroll, close modals, reveal,      │
 │                         submit gates, quiz modals          │
 │                         (radio / select), find code, submit│
+│   findCodeInput()       code field by meaning, not DOM     │
+│                         order (decoy text input is safe)   │
 │   findSubmitButton()    the page's main submit control     │
 │   solveStepLoop(opts)   poll one step until URL advances,  │
 │                         completion, reset, or timeout      │
@@ -69,9 +71,22 @@
   only when the text also mentions the *code* — so "Show menu" or the
   "Submit Code" control is never mistaken for a reveal.
 
-- **Submit/input targeting.** The code field is the first input whose
-  placeholder mentions "code", else the first text-like input —
-  `text`/`search`/a bare `<input>` (no `type`, which defaults to text) — so a
+- **Submit/input targeting.** `findCodeInput` picks the code field by *meaning*,
+  not DOM order: an input whose placeholder, `name`, `id`, `aria-label`, or
+  associated `<label>` contains "code" (`\bcode\b`, so a `postcode`/`barcode`
+  decoy field is excluded — the same boundary rule the labelled-code scan uses)
+  is preferred wherever it sits, and only text-like inputs are eligible (a
+  checkbox whose label mentions a "code of conduct" is never chosen). Because
+  widening the signal past the placeholder is itself a distractor surface, a
+  "code" with a non-challenge qualifier (`promo`/`discount`/`coupon`/`gift`/
+  `area`/`zip`/`postal`/`country`/`bar`/`qr` … `code`) is rejected — those name
+  a different kind of code — so a "Promo code" decoy box can't win; an
+  unrecognised qualifier just falls through to the DOM-order fallback. That
+  keeps a decoy text input listed first (a newsletter "email" box) from
+  capturing the code — the input-side analog of the decoy-form-safe submit
+  search. When
+  nothing is code-associated it falls back to the original DOM-order chain: the
+  first `text`/`search`/bare `<input>` (no `type`, which defaults to text), so a
   form that never spells out `type="text"` is still handled. `findSubmitButton`
   matches a real submit control (`<button type="submit">` **or**
   `<input type="submit">`, whatever its label) and accepts an optional scope. A

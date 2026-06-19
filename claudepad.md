@@ -2,6 +2,40 @@
 
 ## Session Summaries
 
+### 2026-06-18T22:35Z — Decoy-safe code-field detection (input-side hardening)
+- Capability/safety gap: the submit side is heavily decoy-hardened (form-scoped,
+  real-control preference, decoy-form avoidance) but the INPUT side was naive —
+  `input[placeholder*="code" i]` then the FIRST `input[type="text"]` in DOM
+  order, with zero decoy awareness. A decoy text input listed first (a newsletter
+  "email" box) whose real code field isn't placeholder-labelled → the code is
+  typed into the decoy and the step stalls. Audited all 24 fixtures: every code
+  field uses `placeholder="Enter code"` (or is the only input), so this case was
+  entirely unguarded AND untested. Confirmed RED with `decoy_text_input.html`.
+- Fix: extracted `findCodeInput()` (top-level, re-paste-safe `function`). Prefers
+  a text-like input whose placeholder/name/id/aria-label/`<label>` contains
+  "code" (`\bcode\b`, so "postcode"/"barcode" excluded — same boundary rule as
+  the labelled-code scan; non-text inputs skipped so a "code of conduct" checkbox
+  isn't chosen) wherever it sits in the DOM. Falls back to the BYTE-IDENTICAL old
+  chain (`text → search → bare input`) when nothing is code-associated, so every
+  existing fixture resolves to the same element → zero regression.
+- Adversarial review (1 finder) flagged one real MINOR: broadening past the
+  placeholder is itself a distractor surface — a "Promo code"/"Area code"/"QR
+  code" decoy TEXT input would now be preferred. Since distractor-safety is the
+  whole point, hardened with a tight `decoyCode` denylist
+  (`promo|discount|coupon|voucher|gift|referral|area|zip|postal|country|bar|qr`
+  `[-\s]+code`); rejected mentions fall through to the DOM-order fallback (the
+  old behaviour), so it only NARROWS the broadened set — can't regress. This also
+  fixes a latent flaw the OLD placeholder-substring match had ("Promo code"
+  placeholder matched before).
+- 2 fixtures + tests, each teeth-verified: `decoy_text_input` (RED vs committed
+  solver), `decoy_qualified_code_input` (RED vs the naive no-denylist version —
+  confirmed by temporarily dropping the denylist). `\bcode\b`/`decoyCode`
+  classification also validated by a standalone Node battery (15 challenge-code
+  phrasings accept / 26 decoys+boundary-traps reject). Suite: 56 passing (was 54:
+  +2). `node --check` clean. Docs synced (README design-choice + distractor
+  bullet, ARCHITECTURE submit/input-targeting bullet + component diagram,
+  fast_solver.js header).
+
 ### 2026-06-18T11:53Z — aria-disabled submit gates (weak-signal, consent-filtered)
 - Capability gap: the agree-gate handler only treated a submit button as gated
   when its NATIVE `.disabled` was set. React/accessible UIs commonly express a
@@ -215,3 +249,12 @@
 - The code field is often NOT inside a `<form>` on this site (React divs), so
   `input.form` can be null — the submit search must fall back to document-wide
   when it is, but prefer the input's own form when present (decoy-form safety).
+- Distractor-safety must cover the INPUT side too, not just buttons/forms.
+  Picking "the first `input[type=text]`" is DOM-order-fragile the same way the
+  grouped submit selector was: a decoy text input (newsletter "email" box) listed
+  first captures the code. `findCodeInput` picks by meaning — placeholder / name /
+  id / aria-label / `<label>` containing `\bcode\b` — and only falls back to
+  DOM order when nothing is code-associated. Broadening the signal past the
+  placeholder reintroduces distractors at one remove ("Promo code" / "Area code"
+  boxes), so a small qualifier denylist guards it; the same `\bcode\b` boundary
+  that excludes "barcode"/"postcode" is reused for consistency.

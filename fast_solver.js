@@ -71,6 +71,55 @@ function findSubmitButton(scope) {
 }
 
 /**
+ * The code entry field. Real forms identify the code box many ways — not just
+ * the placeholder — so an input is preferred when its placeholder, name, id,
+ * aria-label, or associated <label> contains the word "code". That lets the
+ * real field win wherever it sits in the DOM, so a decoy text input listed
+ * first (e.g. a newsletter "email" box) can't capture the code — the input-side
+ * analog of the decoy-form-safe submit search.
+ *
+ * "code" is matched at a word boundary (\bcode\b), the same rule the
+ * labelled-code text scan uses, so a "postcode"/"barcode" decoy field is left
+ * out; only text-like inputs are considered, so a checkbox whose label mentions
+ * a "code of conduct" is never mistaken for the entry field. Because broadening
+ * the signal past the placeholder is itself a new distractor surface, a "code"
+ * carrying a non-challenge qualifier ("promo code", "discount code", "QR code",
+ * "area code", …) is rejected — those name a different kind of code, not the
+ * challenge entry field. (Not exhaustive, but it covers the common decoys; an
+ * unrecognised one just falls through to the DOM-order fallback below, the same
+ * place the old placeholder-only logic ended up.) When nothing is
+ * code-associated it falls back to the original DOM-order chain: the first
+ * type="text", then type="search", then a bare <input> (no type → text).
+ */
+function findCodeInput() {
+    var codeWord = /\bcode\b/i;
+    // Qualifiers that mark a DIFFERENT kind of code (marketing / address / scan
+    // codes), so a "promo code" / "area code" decoy input isn't preferred.
+    var decoyCode = /\b(?:promo|discount|coupon|voucher|gift|referral|area|zip|postal|country|bar|qr)[-\s]+code\b/i;
+    var TEXTUAL = { text: 1, search: 1, email: 1, tel: 1, number: 1, password: 1, url: 1 };
+    var labelText = function (inp) {
+        var wrap = inp.closest && inp.closest('label');
+        return (wrap && wrap.textContent) ||
+            (inp.labels && inp.labels[0] && inp.labels[0].textContent) || '';
+    };
+    var describesCode = function (inp) {
+        return [inp.getAttribute('placeholder'), inp.getAttribute('name'),
+                inp.id, inp.getAttribute('aria-label'), labelText(inp)]
+            .some(function (s) { return s && codeWord.test(s) && !decoyCode.test(s); });
+    };
+    var described = Array.prototype.find.call(
+        document.querySelectorAll('input'),
+        function (inp) {
+            var type = (inp.getAttribute('type') || 'text').toLowerCase();
+            return TEXTUAL[type] && describesCode(inp);
+        });
+    if (described) return described;
+    return document.querySelector('input[type="text"]') ||
+        document.querySelector('input[type="search"]') ||
+        document.querySelector('input:not([type])') || null;
+}
+
+/**
  * Does this button text read like a "reveal the code" control? Any text
  * containing "reveal" qualifies (e.g. "Reveal", "Reveal Code"). Other
  * phrasings ("Show Code", "Unlock Code", "Display the code") qualify only when
@@ -288,14 +337,12 @@ async function solveOnePass(state) {
         var recentlySubmitted = state.lastSubmitted === code &&
             (Date.now() - state.lastSubmitTime) < 800;
         if (!recentlySubmitted) {
-            // The code field: prefer one whose placeholder mentions "code", else
-            // the first text-like input — text, search, or a bare <input> with no
-            // type (which defaults to text). The extra types matter because a real
-            // form may never spell out type="text".
-            var input = document.querySelector('input[placeholder*="code" i]') ||
-                document.querySelector('input[type="text"]') ||
-                document.querySelector('input[type="search"]') ||
-                document.querySelector('input:not([type])');
+            // The code field (see findCodeInput): a "code"-associated input
+            // (placeholder/name/id/aria-label/label) wins wherever it sits, so a
+            // decoy text input listed first isn't typed into; otherwise the first
+            // text-like input — text, search, or a bare <input> (no type, which
+            // defaults to text), since a real form may never spell out type="text".
+            var input = findCodeInput();
             // Submit through the code field's OWN form when it has one, so the
             // real submit control wins regardless of its label ("Verify Code",
             // "Continue", …) and a decoy form's submit (e.g. a newsletter

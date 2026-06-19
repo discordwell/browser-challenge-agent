@@ -177,6 +177,35 @@ def test_code_typed_into_non_text_input(challenge_page):
     assert page.evaluate("window.__submitted") == "SR5CH2"
 
 
+def test_code_typed_into_code_field_not_decoy_text_input(challenge_page):
+    # A decoy newsletter text input (plain type="text", no "code" wording) is
+    # listed BEFORE the real code field, whose placeholder also doesn't say
+    # "code" — it's identified by name="code" and its <label> ("Access code").
+    # Picking the first text input in DOM order would type the code into the
+    # decoy and submit the newsletter form; the real field must win instead.
+    page = challenge_page("decoy_text_input.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "TX6N4P"
+    assert page.evaluate("window.__submitted") == "TX6N4P"
+    # The decoy newsletter field must never receive the code.
+    assert page.evaluate("window.__newsletter") is None
+
+
+def test_code_field_match_rejects_qualified_code_decoy(challenge_page):
+    # Broadening the code-field match to labels/names is itself a distractor
+    # surface: a "Promo code" decoy box carries the word "code". It must be
+    # rejected (it's a different kind of code) so the real "Access code" field —
+    # identified by name="code" — wins, not the decoy listed first.
+    page = challenge_page("decoy_qualified_code_input.html")
+    result = run_solver(page)
+    assert result["advanced"] is True
+    assert result["code"] == "QC7M3R"
+    assert page.evaluate("window.__submitted") == "QC7M3R"
+    # The promo-code decoy must never receive the challenge code.
+    assert page.evaluate("window.__promo") is None
+
+
 def test_input_type_submit_is_clicked(challenge_page):
     # The submit control is an <input type="submit">, not a <button> — the
     # button-only finder would miss it and never submit the code.

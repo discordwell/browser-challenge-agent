@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Enter your code</h1>
+<p>Your code is TX6N4P, type it into the access field.</p>
+
+<!-- Decoy newsletter field listed FIRST: a plain type="text" input with no
+     "code" wording. A solver that types into the first text input would put the
+     code here (and submit the newsletter form) and never reach the real field.
+     This is the input-side analog of multi_form_submit's decoy submit button. -->
+<form id="news">
+  <label>Newsletter email <input type="text" name="email" placeholder="you@example.com"></label>
+  <button type="submit">Subscribe</button>
+</form>
+
+<!-- The real code field: a type="text" input whose placeholder does NOT say
+     "code" (it says "answer"). It is identified instead by name="code" and its
+     <label> ("Access code") — the way real forms commonly mark the code box. -->
+<form id="form">
+  <label>Access code <input id="answer" type="text" name="code" placeholder="Type your answer"></label>
+  <button type="submit">Verify</button>
+</form>
+
+<script>
+  window.__newsletter = null;
+  window.__submitted = null;
+  document.getElementById('news').addEventListener('submit', function (e) {
+    e.preventDefault();
+    window.__newsletter = document.querySelector('#news input').value;  // a wrong type lands here
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('answer').value;
+    window.__submitted = v;
+    if (v === 'TX6N4P') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>

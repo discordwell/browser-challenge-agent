@@ -19,7 +19,7 @@ The solver is deterministic DOM logic — no LLM calls, no screenshots, zero tok
 - Popup modals — Dismiss / Decline / Close / icon-only ×, including fake-close decoys
 - Quiz modals — radio buttons or a `<select>` dropdown; picks "Correct", not "**In**correct" (substring traps)
 - "I agree" / "I'm human" gates — checks the gate-like box only while it's keeping the submit button disabled, one box per poll, so a decoy "sign me up" checkbox is left unchecked. Both native `disabled` and the accessible/React `aria-disabled="true"` idiom count as gated; because `aria-disabled` is a weaker, sometimes-stale hint, a box is ticked on its account only when its label is an affirmative consent phrase ("I agree" / "I'm human"), never benign copy that merely mentions a keyword
-- Distractor avoidance — exact-text matching so "Accept All" / "Close Account" style buttons are never clicked
+- Distractor avoidance — exact-text matching so "Accept All" / "Close Account" style buttons are never clicked; the code is typed into the real code field (matched by meaning) even when a decoy text input — a newsletter "email" or "Promo code" box — is listed first
 
 ## Setup
 
@@ -68,12 +68,19 @@ Design choices that matter:
   appear instead of waiting a fixed worst-case delay per step.
 - **Native value setter** — codes are typed via the native `value` setter +
   `input` event so React-controlled inputs register the change.
+- **Decoy-safe code field** — the input is picked by *meaning*, not DOM order:
+  a field whose placeholder, `name`, `id`, `aria-label`, or `<label>` mentions
+  "code" wins wherever it sits, so a decoy text input listed first (a newsletter
+  "email" box) isn't typed into. A "code" with a non-challenge qualifier (a
+  "Promo code" / "Area code" box) is rejected, so widening the match past the
+  placeholder doesn't open a new distractor. Only when nothing is
+  code-associated does it fall back to the first text-like input — `text`,
+  `search`, or a bare `<input>` (no `type`, which defaults to text).
 - **Form-scoped submit** — the code is submitted through the code field's own
   `<form>`, so a real submit control wins whatever its label ("Verify Code",
   "Continue") and a decoy form's button (a newsletter "Subscribe" above the
   real form) is never clicked. Both `<button type="submit">` and
-  `<input type="submit">` count, and the code field can be a `text`, `search`,
-  or bare `<input>`.
+  `<input type="submit">` count.
 - **Submission throttling** — a found code is submitted once, then only
   re-submitted occasionally, rather than hammering the form on every poll.
 

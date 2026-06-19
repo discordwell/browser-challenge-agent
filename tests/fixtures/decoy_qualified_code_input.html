@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Challenge</title></head>
+<body>
+<h1>Enter your code</h1>
+<p>Your code is QC7M3R, type it into the entry field.</p>
+
+<!-- Decoy listed FIRST: a "Promo code" box. Its label DOES contain the word
+     "code", so broadening the code-field match to labels (not just placeholders)
+     would prefer this decoy — but "promo code" is a different kind of code, not
+     the challenge entry field, so it must be rejected. -->
+<form id="promo">
+  <label>Promo code <input id="promo-field" type="text" name="promo" placeholder="Save 10%"></label>
+  <button type="submit">Apply</button>
+</form>
+
+<!-- The real code field: a plain type="text" whose placeholder doesn't say
+     "code"; it's identified by name="code" and its label ("Access code"). -->
+<form id="form">
+  <label>Access code <input id="answer" type="text" name="code" placeholder="Type your answer"></label>
+  <button type="submit">Verify</button>
+</form>
+
+<script>
+  window.__promo = null;
+  window.__submitted = null;
+  document.getElementById('promo').addEventListener('submit', function (e) {
+    e.preventDefault();
+    window.__promo = document.getElementById('promo-field').value;  // a wrong type lands here
+  });
+  document.getElementById('form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var v = document.getElementById('answer').value;
+    window.__submitted = v;
+    if (v === 'QC7M3R') history.pushState({}, '', '/step2');
+  });
+</script>
+</body>
+</html>
